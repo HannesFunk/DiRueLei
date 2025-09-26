@@ -31,7 +31,8 @@ class ExamReader :
         temp_string = f"temp_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
         temp_filename = temp_string + ".pdf"
         temp_path = Path(self.input_files[0]).with_name(temp_filename)
-        temp_folder = Path(temp_path).parent / temp_string
+        self.temp_path = temp_path
+        self.temp_folder = Path(temp_path).parent / temp_string
 
         ## Merge Several files into one
         if len(self.input_files) > 1:
@@ -46,10 +47,7 @@ class ExamReader :
             self.fitz_source_pdf = fitz.open(self.input_files[0])
 
         self.pdf_page_array = self._read_qr_codes()
-
         self.student_array = self._create_student_array()
-        self.temp_path = temp_path
-        self.temp_folder = temp_folder
 
     ### Second main method - create the output ZIP ###
     def saveZipFile(self, output_path) : 
@@ -96,7 +94,7 @@ class ExamReader :
             data, points, _ = detector.detectAndDecode(rotated)
             if not data == "" :
                 logging.info("QR-Code on page " + str(page_number) + " read at angle " + str(angle) + ". Value: " + data)
-                data = data + "_assignsubmission_file_"
+                data = data.replace("Teilnehmer/in", "") + "_assignsubmission_file_"
 
                 quad = points[0]
 
@@ -112,37 +110,62 @@ class ExamReader :
         return (None, None)
     
     def _create_zip_structure(self) :
-        source_pdf = self.fitz_source_pdf
-        temp_folder = self.temp_folder
-        ordered_array = self.array
-
-        logging.info("Order-Array: "+ str(ordered_array))
-
-        for student_id in ordered_array:
+        for student in self.student_array:
             output_pdf = fitz.open()
 
-            for page in ordered_array[student_id]:
-                output_pdf.insert_pdf(source_pdf, from_page=page, to_page=page)
+            for i, page in enumerate(self.student_array[student]):
+                if not self.split_a3 or not page["size"] == "A3" :
+                    output_pdf.insert_pdf(self.fitz_source_pdf, from_page=page, to_page=page)
+                    continue
 
-            student_folder = str(temp_folder) + "/"+student_id
+                if i+2 > len(self.student_array[student]):
+                    continue
+
+                # else: split_a3 is true and size is A3
+                next_page = self.student_array[student][i+1]
+                if self._is_splittable_pair(page, next_page) :
+                    (output_page4, output_page1) = self._split_a3(page)
+                    (output_page2, output_page3) = self._split_a3(next_page)
+
+                    for page in (output_page1, output_page2, output_page3, output_page4) :
+                        output_pdf.insert_pdf(page)
+                        page.close()
+
+            student_folder = str(self.temp_folder) + "/"+student
             os.makedirs(student_folder, exist_ok=True)
-            output_file_path = os.path.join(student_folder, f"{student_id}.pdf")
+            output_file_path = os.path.join(student_folder, f"{student}.pdf")
 
             logging.info("Saving PDF" + output_file_path)
             output_pdf.save(output_file_path)
+            output_pdf.close()
 
-    def _split_a3_doc (self, doc_path) :
-        doc = fitz.open(doc_path)
-        page_sizes = self._detect_page_sizes(doc)
+
+    def _is_splittable_pair(self, page1, page2) -> bool : 
+        if not page1["status"] == "read" :
+            return False
+        
+        if page1["side"] == "right" and page2["side"] == "left" :
+            return False
+        
+        return True
+
        
-        a3_doc = fitz.open()
-        for page_num in page_sizes["A3"] :
-            a3_doc.insert_pdf(doc, from_page=page_num, to_page=page_num)
+    def _split_a3(self, page) :
+        fitz_page = self.fitz_source_pdf[page["page_num"]]
+        rect = fitz_page.rect
+        left_rect = fitz.Rect(rect.x0, rect.y0, rect.x1 / 2, rect.y1)
+        right_rect = fitz.Rect(rect.x1 / 2, rect.y0, rect.x1, rect.y1)
 
-        a3_doc.save(os.join(self.temp_folder,"a3_doc.pdf")) # maybe we don't even need to save this?
+        left_page = fitz.open()
+        left_page1 = left_page.new_page(width=left_rect.width, height=left_rect.height)
+        left_page1.show_pdf_page(left_page1.rect, self.fitz_source_pdf, page["page_num"], clip=left_rect)
 
-        doc.close()
+        # Bottom half
+        right_page = fitz.open()
+        right_page2 = right_page.new_page(width=right_rect.width, height=right_rect.height)
+        right_page2.show_pdf_page(right_page2.rect, self.fitz_source_pdf, page["page_num"], clip=right_rect)
 
+        return (left_page, right_page)
             
 
     def _read_qr_codes(self) :
