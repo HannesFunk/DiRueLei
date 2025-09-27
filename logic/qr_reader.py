@@ -2,31 +2,31 @@ import shutil
 import cv2
 from datetime import datetime
 import fitz
-import logging
 import numpy as np
 from pathlib import Path
 from PyPDF2 import PdfMerger
 import os
 from PIL import Image
 import zipfile
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import cm
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+import time 
 
-## For logging
-logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
-console = logging.StreamHandler()
-console.setLevel(level=logging.DEBUG)
-formatter =  logging.Formatter('%(levelname)s : %(message)s')
-console.setFormatter(formatter)
-logger.addHandler(console)
 
 class ExamReader : 
-    def __init__(self, input_files : list[str], scan_options, progress_callback=None):
+
+    def __init__(self, input_files : list[str], scan_options, logger, progress_callback=None):
         self.input_files = input_files
         self.progress_callback = progress_callback
         self.split_a3 = scan_options["split_a3"] 
         self.two_page_scan = scan_options["two_page_scan"]
+        self.logger = logger
+        self.pdf_page_array = None
+        self.student_array = None
 
-    ### First main method - processes data and should be accessed from other files ###
     def readFiles(self) :
         temp_string = f"temp_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
         temp_filename = temp_string + ".pdf"
@@ -34,14 +34,13 @@ class ExamReader :
         self.temp_path = temp_path
         self.temp_folder = Path(temp_path).parent / temp_string
 
-        ## Merge Several files into one
         if len(self.input_files) > 1:
             merger = PdfMerger()
             for file in self.input_files :
                 merger.append(file)
             merger.write(temp_path)
             merger.close()
-            logging.info("Merged PDF saved to: " + str(temp_path))
+            self.logger.info("Merged PDF saved to: " + str(temp_path))
             self.fitz_source_pdf = fitz.open(temp_path)
         else :
             self.fitz_source_pdf = fitz.open(self.input_files[0])
@@ -49,16 +48,22 @@ class ExamReader :
         self.pdf_page_array = self._read_qr_codes()
         self.student_array = self._create_student_array()
 
-    ### Second main method - create the output ZIP ###
     def saveZipFile(self, output_path) : 
-        self._create_zip_structure()
+        self.summary = []
+        for student in self.student_array :
+            num_pages = self._create_student_pdf(student)
+            self.summary.append({
+                "Schüler/-in": student.split("_")[0], 
+                "Anzahl Seiten": num_pages}
+            )
+        self._summary_pdf()
 
         with zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED) as zipf :
             for file in self.temp_folder.rglob('*'):
                 zipf.write(file, file.relative_to(self.temp_folder))
-        logging.info("ZIP file created: " + output_path)
-
-    ### End processing ###
+        self.logger.info("ZIP file created: " + output_path)
+        self.logger.info(f"Done. Created output for {len(self.student_array)} students.")
+        
     def close(self):
         self.fitz_source_pdf.close()
         if os.path.exists(str(self.temp_path)):
@@ -66,9 +71,6 @@ class ExamReader :
         if self.temp_folder.exists() and self.temp_folder.is_dir():
             shutil.rmtree(self.temp_folder)
             
-    
-    # ### Private Methods ###
-
     def _extract_qr_code_from_page (self, source_pdf, page_number):
         zoom = 3
         mat = fitz.Matrix(zoom, zoom)
@@ -93,61 +95,101 @@ class ExamReader :
 
             data, points, _ = detector.detectAndDecode(rotated)
             if not data == "" :
-                logging.info("QR-Code on page " + str(page_number) + " read at angle " + str(angle) + ". Value: " + data)
+                self.logger.info("QR-Code on page " + str(page_number+1) + " read at angle " + str(angle) + ". Value: " + data.split("_")[0])
                 data = data.replace("Teilnehmer/in", "") + "_assignsubmission_file_"
 
                 quad = points[0]
-
                 cx = int(quad[:,0].mean())
                 cy = int(quad[:,1].mean())
-
-                # check left or right half
                 side = "left" if cx < w/2 else "right"
-
                 return (data, side)
             
-        logging.warning("QR-Code on page " + str(page_number) + " could not be read.")
         return (None, None)
     
-    def _create_zip_structure(self) :
-        for student in self.student_array:
-            output_pdf = fitz.open()
+    def get_summary_path(self) -> str:
+        return self.summary_path
+    
+    def _summary_pdf(self):
+        summary = self.summary
+        if not summary or len(summary) == 0 :
+            return False
+        
+        timestamp = time.strftime("%Y%m%d-%H%M%S")
+        filename = str(Path(self.temp_path).parent) + "/summary-"+timestamp +".pdf"
 
-            for i, page in enumerate(self.student_array[student]):
-                if not self.split_a3 or not page["size"] == "A3" :
-                    output_pdf.insert_pdf(self.fitz_source_pdf, from_page=page, to_page=page)
-                    continue
+        doc = SimpleDocTemplate(filename, pagesize=A4)
+        elements = []
+        styles = getSampleStyleSheet()
+        title = Paragraph("Zusammenfassung", styles['Title'])
+        elements.append(title)
+        elements.append(Spacer(1, 0.5*cm))
 
-                if i+2 > len(self.student_array[student]):
-                    continue
+        # Prepare table data
+        if summary and isinstance(summary, list) and isinstance(summary[0], dict):
+            headers = list(summary[0].keys())
+            data = [headers] + [[str(row.get(h, "")) for h in headers] for row in summary]
+        else:
+            data = [["Keine Daten"]]
 
-                # else: split_a3 is true and size is A3
-                next_page = self.student_array[student][i+1]
-                if self._is_splittable_pair(page, next_page) :
-                    (output_page4, output_page1) = self._split_a3(page)
-                    (output_page2, output_page3) = self._split_a3(next_page)
+        table = Table(data, repeatRows=1)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ]))
+        elements.append(table)
 
-                    for page in (output_page1, output_page2, output_page3, output_page4) :
-                        output_pdf.insert_pdf(page)
-                        page.close()
+        doc.build(elements)
+        self.summary_path = filename
+    
+    
+    def _create_student_pdf(self, student : str) -> int :
+        output_pdf = fitz.open()
+        i=0
 
-            student_folder = str(self.temp_folder) + "/"+student
-            os.makedirs(student_folder, exist_ok=True)
-            output_file_path = os.path.join(student_folder, f"{student}.pdf")
+        while (i < len(self.student_array[student])):
+            page = self.student_array[student][i]
+            if not self.split_a3 or not page["size"] == "A3" or not i + 1 < len(self.student_array[student]):
+                output_pdf.insert_pdf(self.fitz_source_pdf, from_page=page["page_num"], to_page=page["page_num"])
+                i+=1
+                continue
 
-            logging.info("Saving PDF" + output_file_path)
-            output_pdf.save(output_file_path)
-            output_pdf.close()
+            next_page = self.student_array[student][i+1]
+            if self._is_splittable_pair(page, next_page) :
+                self.logger.info(f"Pages {page['page_num']+1} and {next_page['page_num']+1} will be split.")
+                (output_page4, output_page1) = self._split_a3(page)
+                (output_page2, output_page3) = self._split_a3(next_page)
+
+                for page in (output_page1, output_page2, output_page3, output_page4) :
+                    output_pdf.insert_pdf(page)
+                    page.close()
+                i+=2
+                continue
+
+            else :
+                output_pdf.insert_pdf(self.fitz_source_pdf, from_page=page["page_num"], to_page=page["page_num"])
+                i+=1
+                continue
+
+        num_pages = len(output_pdf)
+        student_folder = str(self.temp_folder) + "/"+student
+        os.makedirs(student_folder, exist_ok=True)
+        output_file_path = os.path.join(student_folder, f"{student}.pdf")
+        output_pdf.save(output_file_path)
+        output_pdf.close()
+        return num_pages
+
 
 
     def _is_splittable_pair(self, page1, page2) -> bool : 
-        if not page1["status"] == "read" :
-            return False
-        
-        if page1["side"] == "right" and page2["side"] == "left" :
-            return False
-        
-        return True
+        return ( 
+            page1["status"] == "read" and
+            (page1["side"] == "left" and page2["side"] == "right") or (page2["side"] == "none")
+        )
 
        
     def _split_a3(self, page) :
@@ -173,9 +215,10 @@ class ExamReader :
         doc = self.fitz_source_pdf
         total_pages = len(self.fitz_source_pdf)
         last_qr = None
+        missing_pages = []
 
         for page_num in range (total_pages) : 
-            size = self._detect_page_size(doc, page_num)
+            size = self._detect_page_size(doc[page_num])
             (qr, side) = self._extract_qr_code_from_page(doc, page_num)
             if qr:
                 page_info = {"page_num": page_num,
@@ -186,30 +229,36 @@ class ExamReader :
                              }
                 pages_info.append(page_info)
                 last_qr = qr
-                logger.info(f"Page {page_num+1} read: {qr}")
 
             elif self.two_page_scan :
                 if not last_qr :
-                    logger.error(f"Error on page {page_num+1}: There seem to be two consecutive pages without QR-code or the first page does not have a QR code.")
-                    return False
+                    self.logger.error(f"Error on page {page_num+1} of merged PDF: There seem to be two consecutive pages without QR-code or the first page does not have a QR code.")
+                    missing_pages.append(page_num)
+                    continue
                 page_info = {"page_num": page_num,
                              "size": size,
                              "status": "from_previous",
                              "value": last_qr, 
+                             "side": "none"
                              }
+                self.logger.info(f"No QR code on page {page_num+1} of merged PDF. Inferred from previous page.")
                 pages_info.append(page_info)
                 last_qr = None
 
             else : 
-                logger.error(f"Read error: Page {page_num+1} has no QR-Code and option two_page_scan is not active.")
-                return False
+                self.logger.error(f"Read error: Page {page_num+1} has no QR-Code and option two_page_scan is not active.")
+                missing_pages.append(page_num)
+                continue
             
             if self.progress_callback:
                 self.progress_callback((page_num+1)/total_pages)
 
+        if len(missing_pages) > 0:
+            self.logger.error("Same pages could not be assigned: " + str(missing_pages))
+        else :
+            self.logger.info("QR codes read completely.")
         return pages_info
             
-
     def _create_student_array(self) :
         students = {}
         for page in self.pdf_page_array :
@@ -219,42 +268,15 @@ class ExamReader :
             students[page["value"]].append(page)
         return students
 
-
-    def _detect_page_size (self, doc, page_num) :
-        page = doc[page_num]
+    def _detect_page_size (self, page) :
         width, height = page.rect.width, page.rect.height
-        logger.debug(f"Page: {width:.2f} x {height:.2f} pt")
-
         if self._is_a4(width, height):
             return "A4"
         elif self._is_a3(width, height):
             return "A3"
         else:
             return "other"
-
-
-
-    def _detect_page_sizes(self, doc) :
-        a3_pages = []
-        a4_pages = []
-        other_pages = [] 
-        for i, page in enumerate(doc):
-            width, height = page.rect.width, page.rect.height
-            logger.debug(f"Page {i+1}: {width:.2f} x {height:.2f} pt")
-
-            if self._is_a4(width, height):
-                a4_pages.append(i)
-            elif self.is_a3(width, height):
-                a3_pages.append(i)
-            else:
-                other_pages.append(i)
-
-        return {
-            "A4": a4_pages,
-            "A3": a3_pages,
-            "other": other_pages
-            }
-
+        
     def _is_a4(self, w, h):
         return self._is_close(w, 595) and self._is_close(h, 842) or self._is_close(w, 842) and self._is_close(h, 595)
 

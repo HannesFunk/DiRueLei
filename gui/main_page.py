@@ -50,10 +50,8 @@ class MainPage(ctk.CTkFrame):
         button.configure(text="Anleitung", command=lambda: webbrowser.open(instructions_path))
         box1.pack(fill="x", pady=(0, 10))
 
-        box2 = NumberedBox(self, number=2, headline="QR-Codes erzeugen", text="Bitte CSV-Datei gemäß der Anleitung auswählen. QR-Codes werden dann als PDF-Datei erzeugt.", buttons=2)
+        box2 = NumberedBox(self, number=2, headline="QR-Codes erzeugen", text="Bitte CSV-Datei gemäß der Anleitung auswählen. QR-Codes werden dann als PDF-Datei erzeugt.", buttons=1)
         box2.get_button_primary().configure(text=".csv auswählen", command=self.select_csv)
-        self.button_qr = box2.get_button_secondary()
-        self.button_qr.configure(text="QR-Codes erzeugen", state="disabled", command=self.show_qr_generation_page)
         box2.pack(fill="x", pady=(0, 10))
 
         box3 = NumberedBox(self, number=3, headline="LN bekleben und scannen", text="Auf jeder Seite genau einen QR-Code anbringen", buttons=0)
@@ -67,36 +65,12 @@ class MainPage(ctk.CTkFrame):
         self.boxes = [0, box1, box2, box3, box4]
 
 
-    def set_csv_info(self, info):
-        self.boxes[2].set_info_line(info)
-
-    def set_scan_info(self, info):
-        self.boxes[4].set_info_line(info)
-
-    def enable_scan_process_button(self):
-        self.boxes[4].get_button_secondary().configure(state="normal")
-
-    def disable_scan_process_button(self):
-        self.boxes[4].get_button_secondary().configure(state="disabled")
-
-
-    def select_csv(self):
+    def select_csv(self) :
         path = filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")])
-        if path:
-            self.csv_path = path
-            self.button_qr.configure(state="normal")
-            self.set_csv_info("Datei: " + path)
-        else:
-            self.set_csv_info("Keine Datei ausgewählt.")
-
-
-    def show_qr_generation_page(self):
-        input_file = self.csv_path
-        if not input_file:
-            ctk.messagebox.show_error(title="Fehler", message="Keine CSV-Datei gewählt.")
+        if not path:
             return
-        qr_generator = QRGenerator(input_file)
-
+        
+        qr_generator = QRGenerator(path)
         for child in self.master.winfo_children():
             child.pack_forget()
 
@@ -109,19 +83,18 @@ class MainPage(ctk.CTkFrame):
             self.qr_generation_page.pack_forget()
         if hasattr(self, 'scan_page'):
             self.scan_page.pack_forget()
-        self.pack(fill="both", expand=True)
+        self.pack(fill="both", expand=True, , padx=20, pady=20)
 
 
     def select_scan_files(self):
         input_files = filedialog.askopenfilenames(filetypes=[("PDF files", "*.pdf")])
-        if input_files:
-            for child in self.master.winfo_children():
-                child.pack_forget()
-            self.scan_page = ScanPage(self.master, input_files, back_callback=self.back_to_main)
-            self.scan_page.pack(fill="both", expand=True)
-        else:
-            self.main_page.set_scan_info("Keine Datei ausgewählt.")
-            self.main_page.disable_scan_process_button()
+        if not input_files:
+            return
+        
+        for child in self.master.winfo_children():
+            child.pack_forget()
+        self.scan_page = ScanPage(self.master, input_files, back_callback=self.back_to_main)
+        self.scan_page.pack(fill="both", expand=True)
 
 
 

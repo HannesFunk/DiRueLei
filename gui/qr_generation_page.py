@@ -48,10 +48,10 @@ class QRGenerationPage(ctk.CTkFrame):
         self.entry_offset_row = ctk.CTkEntry(self.offset_details_frame, width=80)
         self.entry_offset_row.grid(row=0, column=1, padx=20)
 
-        label_offset_row = ctk.CTkLabel(self.offset_details_frame, text="Spalte: ")
-        label_offset_row.grid(row=0, column=2, padx=(20,10))
-        self.entry_offset_row = ctk.CTkEntry(self.offset_details_frame, width=80)
-        self.entry_offset_row.grid(row=0, column=3, padx=20)
+        label_offset_col = ctk.CTkLabel(self.offset_details_frame, text="Spalte: ")
+        label_offset_col.grid(row=0, column=2, padx=(20,10))
+        self.entry_offset_col = ctk.CTkEntry(self.offset_details_frame, width=80)
+        self.entry_offset_col.grid(row=0, column=3, padx=20)
 
         self.check_selection = ctk.CTkCheckBox(self, text="Nur für bestimmte Schüler-/innen QR-Codes erstellen", command=self.on_toggle_selection)
         self.check_selection.grid(row=4, column=0, padx=20, sticky="w", pady=(0,20))

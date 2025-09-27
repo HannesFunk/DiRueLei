@@ -1,12 +1,13 @@
 import csv
 import io
 import re
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
 import qrcode
 from reportlab.pdfgen import canvas        
 from reportlab.lib.pagesizes import A4        
 from reportlab.lib.units import cm   
 from reportlab.lib.utils import ImageReader
+import os
 
 class QRGenerator:
     def __init__(self, csv_path: str):
@@ -19,7 +20,7 @@ class QRGenerator:
         reader = csv.DictReader(self.csv_file, delimiter=',')
         string_id = reader.fieldnames[0]
         for row in reader:
-            row[string_id].replace("Teilnehmer/in", "")
+            row[string_id] = row[string_id].replace("Teilnehmer/in", "")
             students.append({
                 'id': row[string_id],
                 'name': row['Vollständiger Name']
@@ -35,7 +36,7 @@ class QRGenerator:
         img_qr = qr.make_image(fill_color="black", back_color="white").convert("RGB")
 
         # Resize to 3cm x 3cm at 300 DPI
-        qr_size_px = int((3 / 2.54) * 300)  # 3 cm in inches * DPI
+        qr_size_px = int((3 / 2.54) * 300) 
         img_qr = img_qr.resize((qr_size_px, qr_size_px), Image.LANCZOS)
 
         return img_qr
@@ -67,7 +68,6 @@ class QRGenerator:
         page_specs["qr_per_page"] = page_specs["num_rows"]*page_specs["num_cols"]
         x_start = page_specs["margin-left"] + (page_specs["col_width"]-page_specs["qr_size"])/2
         y_start = page_specs["margin-top"] + (page_specs["row_height"]-page_specs["qr_size"]- 0.5 * cm)/2
- 
 
         for i, student in enumerate(students):
             qr_img = self.create_qr_image(student["id"], student["name"])
@@ -111,6 +111,12 @@ class QRGenerator:
             c.drawCentredString(text_x, text_y, name_to_print)
 
         c.save()
+        # Open the generated PDF file with the default application
+        try:
+            os.startfile(output_file)
+        except AttributeError:
+            import subprocess
+            subprocess.Popen(["open", output_file])
 
     def sort_students (self, students : list[dict]) -> list[dict]: 
         def extract_last_name (student : dict) -> str:
@@ -119,7 +125,6 @@ class QRGenerator:
             return parts[1] if len(parts) >= 2 else parts[0]
         
         return sorted(students, key=extract_last_name)
-
 
     def multiply_students (self, students : list[dict], repeat : int = 1) :
         result = []
