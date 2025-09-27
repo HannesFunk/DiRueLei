@@ -46,6 +46,10 @@ class ScanPage(ctk.CTkFrame):
 
 
     def read_pdf(self) :
+        # Ask for output path in main thread
+        output_path = filedialog.asksaveasfilename(defaultextension=".zip", filetypes=[("ZIP-Dateien", "*.zip")])
+        if not output_path:
+            return
         def process_files() :
             try :
                 scan_options = {
@@ -54,9 +58,7 @@ class ScanPage(ctk.CTkFrame):
                 }
                 reader = ExamReader(self.input_files, scan_options, self.logger, self.update_progress)
                 reader.readFiles()
-                output_path = filedialog.asksaveasfilename(defaultextension=".zip", filetypes=[("ZIP-Dateien", "*.zip")])
-                if output_path:
-                    reader.saveZipFile(output_path)
+                reader.saveZipFile(output_path)
                 self.summary_path = reader.get_summary_path()
                 reader.close()
                 self.summary_btn.configure(state="normal")
@@ -91,4 +93,3 @@ class ScanPage(ctk.CTkFrame):
 
     def update_progress(self, percentage) : 
          self.progress_bar.set(percentage)
-    
