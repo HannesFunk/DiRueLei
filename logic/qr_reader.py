@@ -25,7 +25,7 @@ class ExamReader :
         self.two_page_scan = scan_options["two_page_scan"]
         self.logger = logger
         self.pdf_page_array = None
-        self.student_array = None
+        self.student_page_map = None
 
     def readFiles(self) :
         temp_string = f"temp_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
@@ -46,11 +46,11 @@ class ExamReader :
             self.fitz_source_pdf = fitz.open(self.input_files[0])
 
         self.pdf_page_array = self._read_qr_codes()
-        self.student_array = self._create_student_array()
+        self.student_page_map = self._create_student_page_map()
 
     def saveZipFile(self, output_path) : 
         self.summary = []
-        for student in self.student_array :
+        for student in self.student_page_map :
             num_pages = self._create_student_pdf(student)
             self.summary.append({
                 "Schüler/-in": student.split("_")[0], 
@@ -62,7 +62,7 @@ class ExamReader :
             for file in self.temp_folder.rglob('*'):
                 zipf.write(file, file.relative_to(self.temp_folder))
         self.logger.info("ZIP file created: " + output_path)
-        self.logger.info(f"Done. Created output for {len(self.student_array)} students.")
+        self.logger.info(f"Done. Created output for {len(self.student_page_map)} students.")
         
     def close(self):
         self.fitz_source_pdf.close()
@@ -71,40 +71,38 @@ class ExamReader :
         if self.temp_folder.exists() and self.temp_folder.is_dir():
             shutil.rmtree(self.temp_folder)
             
-    def _extract_qr_code_from_page (self, source_pdf, page_number):
-        zoom = 3
-        mat = fitz.Matrix(zoom, zoom)
-        pix = source_pdf.load_page(page_number).get_pixmap(matrix=mat)
-        img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-
+    def _extract_qr_code_from_page (self, page_number):
+        img_cv = self._open_page_cv(page_number)
         detector = cv2.QRCodeDetector()
-        img_cv = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR) 
-        angles = np.concatenate([
-            np.array([0]), 
-            np.array(range(-15, 15, 1))
-        ])
-        _, indices = np.unique(angles, return_index=True)
-        angles = angles[np.sort(indices)]
-
         (h,w) = img_cv.shape[:2]
         center = (w//2, h//2)
 
+        angles = [0] + [i for i in range(-15, 16) if i != 0]
         for angle in angles :
             matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
             rotated = cv2.warpAffine(img_cv, matrix, (w,h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
 
             data, points, _ = detector.detectAndDecode(rotated)
-            if not data == "" :
-                self.logger.info("QR-Code on page " + str(page_number+1) + " read at angle " + str(angle) + ". Value: " + data.split("_")[0])
-                data = data.replace("Teilnehmer/in", "") + "_assignsubmission_file_"
+            if data == "" :
+                continue
+            
+            self.logger.info(f"QR-Code on page {page_number+1} read. Student: {data.split('_')[0]}{f' (angle {angle})' if angle != 0 else ''}")
+            data = data.replace("Teilnehmer/in", "")
 
-                quad = points[0]
-                cx = int(quad[:,0].mean())
-                cy = int(quad[:,1].mean())
-                side = "left" if cx < w/2 else "right"
-                return (data, side)
+            cx = int(points[0][:,0].mean())
+            side = "left" if cx < w/2 else "right"
+            return (data, side)
             
         return (None, None)
+    
+
+    def _open_page_cv (self, page_number) :
+        zoom = 3
+        mat = fitz.Matrix(zoom, zoom)
+        pix = self.fitz_source_pdf.load_page(page_number).get_pixmap(matrix=mat)
+        img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+        return cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR) 
+        
     
     def get_summary_path(self) -> str:
         return self.summary_path
@@ -114,8 +112,7 @@ class ExamReader :
         if not summary or len(summary) == 0 :
             return False
         
-        timestamp = time.strftime("%Y%m%d-%H%M%S")
-        filename = str(Path(self.temp_path).parent) + "/summary-"+timestamp +".pdf"
+        filename = f"{Path(self.temp_path).parent}/summary-{time.strftime('%Y%m%d-%H%M%S')}.pdf"
 
         doc = SimpleDocTemplate(filename, pagesize=A4)
         elements = []
@@ -151,14 +148,14 @@ class ExamReader :
         output_pdf = fitz.open()
         i=0
 
-        while (i < len(self.student_array[student])):
-            page = self.student_array[student][i]
-            if not self.split_a3 or not page["size"] == "A3" or not i + 1 < len(self.student_array[student]):
+        while (i < len(self.student_page_map[student])):
+            page = self.student_page_map[student][i]
+            if not self.split_a3 or not page["size"] == "A3" or not i + 1 < len(self.student_page_map[student]):
                 output_pdf.insert_pdf(self.fitz_source_pdf, from_page=page["page_num"], to_page=page["page_num"])
                 i+=1
                 continue
 
-            next_page = self.student_array[student][i+1]
+            next_page = self.student_page_map[student][i+1]
             if self._is_splittable_pair(page, next_page) :
                 self.logger.info(f"Pages {page['page_num']+1} and {next_page['page_num']+1} will be split.")
                 (output_page4, output_page1) = self._split_a3(page)
@@ -202,7 +199,6 @@ class ExamReader :
         left_page1 = left_page.new_page(width=left_rect.width, height=left_rect.height)
         left_page1.show_pdf_page(left_page1.rect, self.fitz_source_pdf, page["page_num"], clip=left_rect)
 
-        # Bottom half
         right_page = fitz.open()
         right_page2 = right_page.new_page(width=right_rect.width, height=right_rect.height)
         right_page2.show_pdf_page(right_page2.rect, self.fitz_source_pdf, page["page_num"], clip=right_rect)
@@ -212,21 +208,15 @@ class ExamReader :
 
     def _read_qr_codes(self) :
         pages_info = []
-        doc = self.fitz_source_pdf
         total_pages = len(self.fitz_source_pdf)
         last_qr = None
         missing_pages = []
 
         for page_num in range (total_pages) : 
-            size = self._detect_page_size(doc[page_num])
-            (qr, side) = self._extract_qr_code_from_page(doc, page_num)
+            size = self._detect_page_size(self.fitz_source_pdf[page_num])
+            (qr, side) = self._extract_qr_code_from_page(page_num)
             if qr:
-                page_info = {"page_num": page_num,
-                            "size": size,
-                             "status": "read",
-                             "value": qr, 
-                             "side": side
-                             }
+                page_info = {"page_num": page_num, "size": size, "status": "read", "value": qr, "side": side}
                 pages_info.append(page_info)
                 last_qr = qr
 
@@ -235,12 +225,7 @@ class ExamReader :
                     self.logger.error(f"Error on page {page_num+1} of merged PDF: There seem to be two consecutive pages without QR-code or the first page does not have a QR code.")
                     missing_pages.append(page_num)
                     continue
-                page_info = {"page_num": page_num,
-                             "size": size,
-                             "status": "from_previous",
-                             "value": last_qr, 
-                             "side": "none"
-                             }
+                page_info = {"page_num": page_num, "size": size, "status": "from_previous", "value": last_qr, "side": "none"}
                 self.logger.info(f"No QR code on page {page_num+1} of merged PDF. Inferred from previous page.")
                 pages_info.append(page_info)
                 last_qr = None
@@ -256,10 +241,11 @@ class ExamReader :
         if len(missing_pages) > 0:
             self.logger.error("Same pages could not be assigned: " + str(missing_pages))
         else :
-            self.logger.info("QR codes read completely.")
+            self.logger.info("All QR codes read.")
         return pages_info
+    
             
-    def _create_student_array(self) :
+    def _create_student_page_map(self) :
         students = {}
         for page in self.pdf_page_array :
             if not page["value"] in students :
