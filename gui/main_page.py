@@ -1,6 +1,5 @@
 import customtkinter as ctk
 import os
-import webbrowser
 from tkinter import filedialog
 from logic.qr_generator import QRGenerator
 from gui.qr_generation_page import QRGenerationPage
