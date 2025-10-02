@@ -1,19 +1,19 @@
-import shutil
-import cv2
-from datetime import datetime
-import fitz
-import numpy as np
-from pathlib import Path
-from PyPDF2 import PdfMerger
 import os
-from PIL import Image
+import shutil
 import zipfile
+import time
+from datetime import datetime
+from pathlib import Path
+import fitz
+import cv2
+import numpy as np
+from PyPDF2 import PdfMerger
+from PIL import Image
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
-import time 
 
 
 class ExamReader : 
