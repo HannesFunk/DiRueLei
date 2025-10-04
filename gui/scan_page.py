@@ -4,11 +4,12 @@ import threading
 from logic.qr_reader import ExamReader
 from gui.textbox_logger import TextboxLogger
 import os
+from pathlib import Path
 
 class ScanPage(ctk.CTkFrame):
-    def __init__(self, main_page, input_files : list[str], back_callback):
-        super().__init__(main_page.master)
-        self.main_page = main_page
+    def __init__(self, master, input_files : list[str], back_callback):
+        super().__init__(master)
+        self.master = master
         self.input_files = input_files
 
         label_title = ctk.CTkLabel(self, text="PDF Scan Einstellungen", font=("Arial", 16, "bold"))
@@ -39,6 +40,10 @@ class ScanPage(ctk.CTkFrame):
         self.summary_btn.pack(side="left", padx=(10,0), expand=True, fill="x")
         self.summary_btn.configure(state="disabled")
 
+        self.preview_btn = ctk.CTkButton(btn_frame, text="Vorschau anzeigen", command=self.preview, fg_color="transparent", border_color="#888", border_width=1, text_color="#1f6aa5")
+        self.preview_btn.pack(side="left", padx=(10,0), expand=True, fill="x")
+        self.preview_btn.configure(state="disabled")
+
         self.start_btn = ctk.CTkButton(btn_frame, text="PDFs einlesen", command=self.read_pdf)
         self.start_btn.pack(side="left", padx=(10,0), expand=True, fill="x")
 
@@ -60,8 +65,11 @@ class ScanPage(ctk.CTkFrame):
                 reader.readFiles()
                 reader.saveZipFile(output_path)
                 self.summary_path = reader.get_summary_path()
+                self.preview_path = reader.get_preview_path()
+                self.master.add_temp_folder(Path(self.summary_path).parent)
                 reader.close()
                 self.summary_btn.configure(state="normal")
+                self.preview_btn.configure(state="normal")
             except Exception as e:
                     self.logger.error(f"Error during PDF reading: {e}")
                     self.logger.exception(e)
@@ -90,6 +98,15 @@ class ScanPage(ctk.CTkFrame):
         except AttributeError:
             import subprocess
             subprocess.Popen(["open", self.summary_path])
+
+    def preview(self):
+        if not self.preview_path:
+            return False
+        try:
+            os.startfile(self.preview_path)
+        except AttributeError:
+            import subprocess
+            subprocess.Popen(["open", self.preview_path])
 
     def update_progress(self, percentage) : 
          self.progress_bar.set(percentage)
