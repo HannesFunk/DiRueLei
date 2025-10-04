@@ -63,7 +63,6 @@ class MainPage(ctk.CTkFrame):
         self.qr_generation_page = QRGenerationPage(self.master, qr_generator, back_callback=self.back_to_main)
         self.qr_generation_page.pack(fill="both", expand=True)
 
-
     def back_to_main(self):
         if hasattr(self, 'qr_generation_page'):
             self.qr_generation_page.pack_forget()

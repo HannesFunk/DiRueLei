@@ -26,37 +26,57 @@ class ExamReader :
         self.logger = logger
         self.pdf_page_array = None
         self.student_page_map = None
+        self.temp_scan_folder = self._ensure_temp_folder()
+        self.temp_folder = self.temp_scan_folder / "temp"
+        self.temp_path = self.temp_folder / f"merged_{datetime.now().strftime('%Y%m%d-%H%M%S')}.pdf"
 
     def readFiles(self) :
-        temp_string = f"temp_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
-        temp_filename = temp_string + ".pdf"
-        temp_path = Path(self.input_files[0]).with_name(temp_filename)
-        self.temp_path = temp_path
-        self.temp_folder = Path(temp_path).parent / temp_string
-
         if len(self.input_files) > 1:
             merger = PdfMerger()
             for file in self.input_files :
                 merger.append(file)
-            merger.write(temp_path)
+            merger.write(self.temp_path)
             merger.close()
-            self.logger.info("Merged PDF saved to: " + str(temp_path))
-            self.fitz_source_pdf = fitz.open(temp_path)
+            self.logger.info("Merged PDF saved to: " + str(self.temp_path))
+            self.fitz_source_pdf = fitz.open(self.temp_path)
         else :
             self.fitz_source_pdf = fitz.open(self.input_files[0])
 
         self.pdf_page_array = self._read_qr_codes()
         self.student_page_map = self._create_student_page_map()
 
+    def _ensure_temp_folder(self):
+        import tkinter as tk
+        from tkinter import filedialog
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        temp_folder = Path(f"scan_{timestamp}")
+        temp_folder.mkdir(parents=True, exist_ok=True)
+        try:
+            with open(temp_folder / "test.txt", "w") as f:
+                pass
+            os.remove(temp_folder / "test.txt")
+        except Exception:
+            root = tk.Tk()
+            root.withdraw()
+            selected_folder = filedialog.askdirectory(title="Bitte wählen Sie einen temporären Ordner mit Schreibrechten")
+            if not selected_folder:
+                raise RuntimeError("Kein temporärer Ordner gewählt. Abbruch.")
+            temp_folder = Path(selected_folder)
+            temp_folder.mkdir(parents=True, exist_ok=True)
+        return temp_folder
+
     def saveZipFile(self, output_path) : 
         self.summary = []
+        preview_pdf = []
         for student in self.student_page_map :
-            num_pages = self._create_student_pdf(student)
+            num_pages, student_file_path = self._create_student_pdf(student)
             self.summary.append({
                 "Schüler/-in": student.split("_")[0], 
                 "Anzahl Seiten": num_pages}
             )
-        self._summary_pdf()
+            preview_pdf.append([student, student_file_path])
+        self.summary_path = self._summary_pdf()
+        self.preview_path = self._create_preview_pdf(preview_pdf)
 
         with zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED) as zipf :
             for file in self.temp_folder.rglob('*'):
@@ -112,7 +132,7 @@ class ExamReader :
         if not summary or len(summary) == 0 :
             return False
         
-        filename = f"{Path(self.temp_path).parent}/summary-{time.strftime('%Y%m%d-%H%M%S')}.pdf"
+        filename = f"{Path(self.temp_folder).parent}/summary-{time.strftime('%Y%m%d-%H%M%S')}.pdf"
 
         doc = SimpleDocTemplate(filename, pagesize=A4)
         elements = []
@@ -141,9 +161,33 @@ class ExamReader :
         elements.append(table)
 
         doc.build(elements)
-        self.summary_path = filename
+        return filename
     
-    
+    def _create_preview_pdf(self, preview_pdf) :   
+        if not preview_pdf or len(preview_pdf) == 0 :
+            return False
+
+        filename = f"{Path(self.temp_folder).parent}/preview-{time.strftime('%Y%m%d-%H%M%S')}.pdf"
+        merger = PdfMerger()
+        for (student, path) in preview_pdf :
+            # Create a one-page PDF with the student's name
+            name_pdf_path = os.path.join(str(self.temp_folder), f"{student}_namepage.pdf")
+            from reportlab.pdfgen import canvas
+            from reportlab.lib.pagesizes import A4
+            c = canvas.Canvas(name_pdf_path, pagesize=A4)
+            c.setFont("Helvetica-Bold", 32)
+            c.drawCentredString(A4[0]/2, A4[1]/2, f"Schüler/-in: {student.split('_')[0]}")
+            c.save()
+            merger.append(name_pdf_path)
+            merger.append(path)
+        merger.write(filename)
+        merger.close()
+        self.logger.info("Preview PDF created: " + filename)
+        return filename
+
+    def get_preview_path(self) -> str:
+        return self.preview_path
+
     def _create_student_pdf(self, student : str) -> int :
         output_pdf = fitz.open()
         i=0
@@ -178,9 +222,7 @@ class ExamReader :
         output_file_path = os.path.join(student_folder, f"{student}.pdf")
         output_pdf.save(output_file_path)
         output_pdf.close()
-        return num_pages
-
-
+        return [num_pages, output_file_path]
 
     def _is_splittable_pair(self, page1, page2) -> bool : 
         return ( 
