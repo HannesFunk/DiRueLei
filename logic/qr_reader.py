@@ -14,49 +14,74 @@ from reportlab.lib.units import cm
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
+import tkinter as tk
+from tkinter import filedialog
+from logic.pdf_manager import PdfManager
 
+## Should the be refactored? Probably yes. Is it working? Also, yes.
 
 class ExamReader : 
 
-    def __init__(self, input_files : list[str], scan_options, logger, progress_callback=None):
-        self.input_files = input_files
+    def __init__(self, input_files : list[str], scan_options, logger, progress_callback):
         self.progress_callback = progress_callback
         self.split_a3 = scan_options["split_a3"] 
         self.two_page_scan = scan_options["two_page_scan"]
         self.logger = logger
-        self.pdf_page_array = None
-        self.student_page_map = None
+        self.temp_scan_folder = self._ensure_temp_folder()
+        self.temp_folder = self.temp_scan_folder / "temp"
+        self.fitz_source_pdf = self._merge_pdf(input_files)
 
     def readFiles(self) :
-        temp_string = f"temp_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
-        temp_filename = temp_string + ".pdf"
-        temp_path = Path(self.input_files[0]).with_name(temp_filename)
-        self.temp_path = temp_path
-        self.temp_folder = Path(temp_path).parent / temp_string
-
-        if len(self.input_files) > 1:
-            merger = PdfMerger()
-            for file in self.input_files :
-                merger.append(file)
-            merger.write(temp_path)
-            merger.close()
-            self.logger.info("Merged PDF saved to: " + str(temp_path))
-            self.fitz_source_pdf = fitz.open(temp_path)
-        else :
-            self.fitz_source_pdf = fitz.open(self.input_files[0])
-
         self.pdf_page_array = self._read_qr_codes()
         self.student_page_map = self._create_student_page_map()
 
+    def _merge_pdf(self, input_files) :
+        source_path = self.temp_folder / f"merged_{datetime.now().strftime('%Y%m%d-%H%M%S')}.pdf"
+        if len(input_files) > 1:
+            merger = PdfMerger()
+            for file in input_files :
+                merger.append(file)
+            merger.write(source_path)
+            merger.close()
+            self.logger.info("Merged PDF saved to: " + str(source_path))
+            return fitz.open(source_path)
+        else :
+            return fitz.open(input_files[0])
+
+    def _ensure_temp_folder(self):
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        temp_folder = Path(f"scan_{timestamp}")
+
+        def check_temp_folder_writable (folder) :
+            try:
+                temp_folder.mkdir(parents=True, exist_ok=True)
+                with open(folder / "test.txt", "w") as f:
+                    f.close()
+                os.remove(folder / "test.txt")
+                return True
+            except Exception:
+                return False
+        
+        while not temp_folder or not check_temp_folder_writable(temp_folder) :
+            root = tk.Tk()
+            root.withdraw()
+            selected_folder = filedialog.askdirectory(title="Bitte wählen Sie einen temporären Ordner mit Schreibrechten")
+            temp_folder = Path(selected_folder) if selected_folder else None
+
+        return temp_folder
+
     def saveZipFile(self, output_path) : 
         self.summary = []
+        preview_pdf = []
         for student in self.student_page_map :
-            num_pages = self._create_student_pdf(student)
+            num_pages, student_file_path = self._create_student_pdf(student)
             self.summary.append({
                 "Schüler/-in": student.split("_")[0], 
                 "Anzahl Seiten": num_pages}
             )
-        self._summary_pdf()
+            preview_pdf.append([student, student_file_path])
+        self.summary_path = self._summary_pdf()
+        self.preview_path = self._create_preview_pdf(preview_pdf)
 
         with zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED) as zipf :
             for file in self.temp_folder.rglob('*'):
@@ -66,8 +91,6 @@ class ExamReader :
         
     def close(self):
         self.fitz_source_pdf.close()
-        if os.path.exists(str(self.temp_path)):
-            os.remove(str(self.temp_path))
         if self.temp_folder.exists() and self.temp_folder.is_dir():
             shutil.rmtree(self.temp_folder)
             
@@ -112,7 +135,7 @@ class ExamReader :
         if not summary or len(summary) == 0 :
             return False
         
-        filename = f"{Path(self.temp_path).parent}/summary-{time.strftime('%Y%m%d-%H%M%S')}.pdf"
+        filename = f"{Path(self.temp_folder).parent}/summary-{time.strftime('%Y%m%d-%H%M%S')}.pdf"
 
         doc = SimpleDocTemplate(filename, pagesize=A4)
         elements = []
@@ -141,11 +164,36 @@ class ExamReader :
         elements.append(table)
 
         doc.build(elements)
-        self.summary_path = filename
+        return filename
     
-    
+    def _create_preview_pdf(self, preview_pdf) :   
+        if not preview_pdf or len(preview_pdf) == 0 :
+            return False
+
+        filename = f"{Path(self.temp_folder).parent}/preview-{time.strftime('%Y%m%d-%H%M%S')}.pdf"
+        merger = PdfMerger()
+        for (student, path) in preview_pdf :
+            # Create a one-page PDF with the student's name
+            name_pdf_path = os.path.join(str(self.temp_folder), f"{student}_namepage.pdf")
+            from reportlab.pdfgen import canvas
+            from reportlab.lib.pagesizes import A4
+            c = canvas.Canvas(name_pdf_path, pagesize=A4)
+            c.setFont("Helvetica-Bold", 32)
+            c.drawCentredString(A4[0]/2, A4[1]/2, f"Schüler/-in: {student.split('_')[0]}")
+            c.save()
+            merger.append(name_pdf_path)
+            merger.append(path)
+        merger.write(filename)
+        merger.close()
+        self.logger.info("Preview PDF created: " + filename)
+        return filename
+
+    def get_preview_path(self) -> str:
+        return self.preview_path
+
     def _create_student_pdf(self, student : str) -> int :
         output_pdf = fitz.open()
+        pdf_manager = PdfManager()
         i=0
 
         while (i < len(self.student_page_map[student])):
@@ -156,10 +204,10 @@ class ExamReader :
                 continue
 
             next_page = self.student_page_map[student][i+1]
-            if self._is_splittable_pair(page, next_page) :
+            if pdf_manager.is_splittable_pair(page, next_page) :
                 self.logger.info(f"Pages {page['page_num']+1} and {next_page['page_num']+1} will be split.")
-                (output_page4, output_page1) = self._split_a3(page)
-                (output_page2, output_page3) = self._split_a3(next_page)
+                (output_page4, output_page1) = pdf_manager.split_a3(page)
+                (output_page2, output_page3) = pdf_manager.split_a3(next_page)
 
                 for page in (output_page1, output_page2, output_page3, output_page4) :
                     output_pdf.insert_pdf(page)
@@ -178,32 +226,7 @@ class ExamReader :
         output_file_path = os.path.join(student_folder, f"{student}.pdf")
         output_pdf.save(output_file_path)
         output_pdf.close()
-        return num_pages
-
-
-
-    def _is_splittable_pair(self, page1, page2) -> bool : 
-        return ( 
-            page1["status"] == "read" and
-            (page1["side"] == "left" and page2["side"] == "right") or (page2["side"] == "none")
-        )
-
-       
-    def _split_a3(self, page) :
-        fitz_page = self.fitz_source_pdf[page["page_num"]]
-        rect = fitz_page.rect
-        left_rect = fitz.Rect(rect.x0, rect.y0, rect.x1 / 2, rect.y1)
-        right_rect = fitz.Rect(rect.x1 / 2, rect.y0, rect.x1, rect.y1)
-
-        left_page = fitz.open()
-        left_page1 = left_page.new_page(width=left_rect.width, height=left_rect.height)
-        left_page1.show_pdf_page(left_page1.rect, self.fitz_source_pdf, page["page_num"], clip=left_rect)
-
-        right_page = fitz.open()
-        right_page2 = right_page.new_page(width=right_rect.width, height=right_rect.height)
-        right_page2.show_pdf_page(right_page2.rect, self.fitz_source_pdf, page["page_num"], clip=right_rect)
-
-        return (left_page, right_page)
+        return [num_pages, output_file_path]
             
 
     def _read_qr_codes(self) :
@@ -211,9 +234,10 @@ class ExamReader :
         total_pages = len(self.fitz_source_pdf)
         last_qr = None
         missing_pages = []
+        pdf_manager = PdfManager()
 
         for page_num in range (total_pages) : 
-            size = self._detect_page_size(self.fitz_source_pdf[page_num])
+            size = pdf_manager.detect_page_size(self.fitz_source_pdf[page_num])
             (qr, side) = self._extract_qr_code_from_page(page_num)
             if qr:
                 page_info = {"page_num": page_num, "size": size, "status": "read", "value": qr, "side": side}
@@ -254,23 +278,4 @@ class ExamReader :
             students[page["value"]].append(page)
         return students
 
-    def _detect_page_size (self, page) :
-        width, height = page.rect.width, page.rect.height
-        if self._is_a4(width, height):
-            return "A4"
-        elif self._is_a3(width, height):
-            return "A3"
-        else:
-            return "other"
-        
-    def _is_a4(self, w, h):
-        return self._is_close(w, 595) and self._is_close(h, 842) or self._is_close(w, 842) and self._is_close(h, 595)
-
-    def _is_a3(self, w, h):
-        return self._is_close(w, 842) and self._is_close(h, 1191) or self._is_close(w, 1191) and self._is_close(h, 842)
-
-    def _is_close(self, a, b, tol=5):
-        return abs(a - b) < tol
-
-
-
+    
