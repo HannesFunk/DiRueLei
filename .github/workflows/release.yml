@@ -5,9 +5,6 @@ on:
   push:
     tags:
       - 'v*'
-  push:
-    tags:
-      - 'v*'  # Only build on version tags
 
 jobs:
   build-windows:
@@ -21,9 +18,9 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt pyinstaller
       - name: Build exe
-        run: pyinstaller gui.spec
+        run: pyinstaller gui-win.spec
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: windows-exe
           path: dist/*.exe
@@ -39,27 +36,9 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt pyinstaller
       - name: Build app
-        run: pyinstaller gui.spec
+        run: pyinstaller gui-win.spec
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: macos-app
           path: dist/*.app
-
-  build-linux:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-      - name: Install dependencies
-        run: pip install -r requirements.txt pyinstaller
-      - name: Build binary
-        run: pyinstaller gui.spec
-      - name: Upload artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: linux-binary
-          path: dist/*
