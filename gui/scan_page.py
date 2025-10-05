@@ -65,9 +65,11 @@ class ScanPage(ctk.CTkFrame):
                 reader.readFiles()
                 reader.saveZipFile(output_path)
                 self.summary_path = reader.get_summary_path()
-                self.master.add_temp_folder(Path(self.summary_path).parent)
                 reader.close()
-                self.summary_btn.configure(state="normal")
+                if self.summary_path :
+                    self.master.add_temp_folder(Path(self.summary_path).parent)
+                    self.summary_btn.configure(state="normal")
+                    
             except Exception as e:
                     self.logger.error(f"Error during PDF reading: {e}")
                     self.logger.exception(e)
