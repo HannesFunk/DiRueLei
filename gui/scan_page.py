@@ -19,7 +19,9 @@ class ScanPage(ctk.CTkFrame):
         self.add_checkbox_with_explainer(self, "Zweiseitiger Scan", self.two_page_scan, "Das bedeutet: Es genügt, dass sich jeweils auf der ersten von zwei Seiten ein QR-Code befindet. Die folgende Seite ohne QR-Code wird automatisch demselben Schüler zugeordnet.")
                                          
         self.split_a3 = ctk.BooleanVar(value=False)
-        self.add_checkbox_with_explainer(self, "A3-Bögen teilen", self.split_a3, "Das bedeutet: A3 Seiten werden in zwei A4 Seiten geteilt. Bei Bögen muss dazu der QR-Code auf dem Doppelbogen 1/4 ('außen') rechts, der für Seiten 2/3 ('innen') links angebracht sein. Kann mit zweiseitigem Scan kombiniert werden, sodass nur außen rechts ein Code angebracht sein muss.")
+        self.add_checkbox_with_explainer(self, "A3-Bögen teilen", self.split_a3, "Das bedeutet: A3 Seiten werden in zwei A4 Seiten geteilt. Der QR-Code muss dabei außen angebracht sein." \
+        "" \
+        "Wer unbedingt innen und außen einen QR-Code aufkleben möchte: dann bitte innen links (Seite 2) und außen rechts (Seite 4).")
 
         self.quick_and_dirty = ctk.BooleanVar(value=False)
         self.add_checkbox_with_explainer(self, "Quick and dirty", self.quick_and_dirty, "Das bedeutet: Auf der Folgeseite einer Seite mit QR-Code wird nur oberflächlich nach einem neuen Code gesucht und diese schneller gescannt und dem vorherigen zugeordnet. (Obacht!)", enabled=False)
@@ -69,7 +71,7 @@ class ScanPage(ctk.CTkFrame):
                 if self.summary_path :
                     self.master.add_temp_folder(Path(self.summary_path).parent)
                     self.summary_btn.configure(state="normal")
-                    
+
             except Exception as e:
                     self.logger.error(f"Error during PDF reading: {e}")
                     self.logger.exception(e)

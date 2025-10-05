@@ -39,7 +39,7 @@ class ExamReader :
         self.student_page_map = self._create_student_page_map()
 
     def _merge_pdf(self, input_files) :
-        source_path = self.temp_folder / f"merged_{datetime.now().strftime('%Y%m%d-%H%M%S')}.pdf"
+        source_path = self.temp_scan_folder / f"merged_{datetime.now().strftime('%Y%m%d-%H%M%S')}.pdf"
         if len(input_files) > 1:
             merger = PdfMerger()
             for file in input_files :
@@ -148,7 +148,7 @@ class ExamReader :
     
     def _fitz_add_file(self, total_fitz, path_to_add) :
         fitz_add = fitz.open(path_to_add)
-        total_fitz.insert_pdf(fitz_add, from_page=1, to_page=len(fitz_add))
+        total_fitz.insert_pdf(fitz_add, from_page=0, to_page=len(fitz_add))
         fitz_add.close()
     
     def _create_summary (self, preview_pdf) :
@@ -197,8 +197,11 @@ class ExamReader :
         title = Paragraph("Zusammenfassung", styles['Title'])
         elements.append(title)
         elements.append(Spacer(1, 0.5*cm))
+        
+        num_students = len(self.student_page_map) if hasattr(self, 'student_page_map') else 0
+        elements.append(Paragraph(f"<b>Anzahl Schüler/-innen:</b> {num_students}", styles['Normal']))
+        elements.append(Spacer(1, 0.3*cm))
 
-        # Prepare table data
         if summary and isinstance(summary, list) and isinstance(summary[0], dict):
             headers = list(summary[0].keys())
             data = [headers] + [[str(row.get(h, "")) for h in headers] for row in summary]
@@ -217,14 +220,16 @@ class ExamReader :
         ]))
         elements.append(table)
 
+        elements.append(Spacer(1, 0.5*cm))
+
         # 2. Add missing pages info to summary
         if hasattr(self, 'missing_pages') and self.missing_pages:
-            elements.append(Spacer(1, 0.5*cm))
             missing_str = ', '.join(str(p+1) for p in self.missing_pages)
             elements.append(Paragraph(f"<b>Nicht zugeordnete Seiten:</b> {len(self.missing_pages)} Seite(n): {missing_str}", styles['Normal']))
+        else :
+            elements.append(Paragraph(f"<b>Alle Seiten zugeordnet.</b>", styles['Normal']))
 
         doc.build(elements)
-
         return output_file
     
     def _create_student_pdf(self, student : str) -> int :
