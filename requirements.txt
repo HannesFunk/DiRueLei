@@ -1,0 +1,8 @@
+customtkinter
+PyMuPDF
+opencv-python
+numpy
+Pillow
+PyPDF2
+reportlab
+qrcode
