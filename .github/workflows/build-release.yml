@@ -36,7 +36,7 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt pyinstaller
       - name: Build app
-        run: pyinstaller gui-win.spec --distpath dist-macos
+        run: pyinstaller gui-macos.spec --distpath dist-macos
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
