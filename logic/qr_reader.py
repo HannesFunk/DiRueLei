@@ -31,6 +31,7 @@ class ExamReader :
         self.logger = logger
         self.temp_scan_folder = self._ensure_temp_folder(input_files[0])
         self.temp_folder = self.temp_scan_folder / "temp"
+        self.temp_folder.mkdir(parents=True, exist_ok=True)
         self.fitz_source_pdf = self._merge_pdf(input_files)
 
     def readFiles(self) :
@@ -189,14 +190,6 @@ class ExamReader :
         namepages_folder = str(self.temp_folder.parent / "namepages")
         os.makedirs(namepages_folder, exist_ok=True)
         merger = PdfMerger()
-        for (student, path) in preview_pdf :
-            name_pdf_path = os.path.join(namepages_folder, f"{student}_namepage.pdf")
-            c = canvas.Canvas(name_pdf_path, pagesize=A4)
-            c.setFont("Helvetica-Bold", 32)
-            c.drawCentredString(A4[0]/2, A4[1]/2, f"Schüler/-in: {student.split('_')[0]}")
-            c.save()
-            merger.append(name_pdf_path)
-            merger.append(path)
 
         if hasattr(self, 'missing_pages') and self.missing_pages:
             missing_name_pdf_path = os.path.join(namepages_folder, "missing_namepage.pdf")
@@ -213,6 +206,15 @@ class ExamReader :
                 temp_pdf.save(temp_missing_pdf_path)
                 temp_pdf.close()
                 merger.append(temp_missing_pdf_path)
+
+        for (student, path) in preview_pdf :
+            name_pdf_path = os.path.join(namepages_folder, f"{student}_namepage.pdf")
+            c = canvas.Canvas(name_pdf_path, pagesize=A4)
+            c.setFont("Helvetica-Bold", 32)
+            c.drawCentredString(A4[0]/2, A4[1]/2, f"Schüler/-in: {student.split('_')[0]}")
+            c.save()
+            merger.append(name_pdf_path)
+            merger.append(path)
 
         merger.write(filename)
         merger.close()
@@ -253,7 +255,9 @@ class ExamReader :
                 continue
 
         num_pages = len(output_pdf)
-        student_folder = str(self.temp_folder) + "/" + student
+        # Format: Participant_6028356_assignsubmission_file_
+        student_id = student.split("_")[1]
+        student_folder = str(self.temp_folder) + "/" + "Participant_" + student_id + "_assignsubmission_file_"
         os.makedirs(student_folder, exist_ok=True)
         output_file_path = os.path.join(student_folder, f"{student}.pdf")
         output_pdf.save(output_file_path)
@@ -295,7 +299,7 @@ class ExamReader :
                 self.progress_callback((page_num+1)/total_pages)
 
         if len(self.missing_pages) > 0:
-            self.logger.error("Some pages could not be assigned: " + str(self.missing_pages))
+            self.logger.error("Some pages could not be assigned: " + str([i+1 for i in self.missing_pages]))
         else :
             self.logger.info("All QR codes read.")
         return pages_info

@@ -61,9 +61,9 @@ class ScanPage(ctk.CTkFrame):
         def process_files() :
             try :
                 scan_options = {
-                    "split_a3": self.split_a3,
-                    "two_page_scan": self.two_page_scan,
-                    "quick_and_dirty": self.quick_and_dirty
+                    "split_a3": self.split_a3.get(),
+                    "two_page_scan": self.two_page_scan.get(),
+                    "quick_and_dirty": self.quick_and_dirty.get()
                 }
                 reader = ExamReader(self.input_files, scan_options, self.logger, self.update_progress)
                 reader.readFiles()
