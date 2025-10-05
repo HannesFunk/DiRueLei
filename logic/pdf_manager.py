@@ -26,18 +26,18 @@ class PdfManager :
         return (page1["status"] == "read" and
             (page1["side"] == "left" and page2["side"] == "right") or (page2["side"] == "none"))
        
-    def split_a3(self, page) :
-        fitz_page = self.fitz_source_pdf[page["page_num"]]
+    def split_a3(self, fitz_pdf, page_num) :
+        fitz_page = fitz_pdf[page_num]
         rect = fitz_page.rect
         left_rect = fitz.Rect(rect.x0, rect.y0, rect.x1 / 2, rect.y1)
         right_rect = fitz.Rect(rect.x1 / 2, rect.y0, rect.x1, rect.y1)
 
         left_page = fitz.open()
         left_page1 = left_page.new_page(width=left_rect.width, height=left_rect.height)
-        left_page1.show_pdf_page(left_page1.rect, self.fitz_source_pdf, page["page_num"], clip=left_rect)
+        left_page1.show_pdf_page(left_page1.rect, fitz_pdf, page_num, clip=left_rect)
 
         right_page = fitz.open()
         right_page2 = right_page.new_page(width=right_rect.width, height=right_rect.height)
-        right_page2.show_pdf_page(right_page2.rect, self.fitz_source_pdf, page["page_num"], clip=right_rect)
+        right_page2.show_pdf_page(right_page2.rect, fitz_pdf, page_num, clip=right_rect)
 
         return (left_page, right_page)

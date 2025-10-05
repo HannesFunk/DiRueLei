@@ -27,7 +27,7 @@ class ExamReader :
         self.split_a3 = scan_options["split_a3"] 
         self.two_page_scan = scan_options["two_page_scan"]
         self.logger = logger
-        self.temp_scan_folder = self._ensure_temp_folder()
+        self.temp_scan_folder = self._ensure_temp_folder(input_files[0])
         self.temp_folder = self.temp_scan_folder / "temp"
         self.fitz_source_pdf = self._merge_pdf(input_files)
 
@@ -48,9 +48,9 @@ class ExamReader :
         else :
             return fitz.open(input_files[0])
 
-    def _ensure_temp_folder(self):
+    def _ensure_temp_folder(self, file : str):
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        temp_folder = Path(f"scan_{timestamp}")
+        temp_folder = Path(file).parent / f"scan_{timestamp}"
 
         def check_temp_folder_writable (folder) :
             try:
@@ -135,7 +135,7 @@ class ExamReader :
         if not summary or len(summary) == 0 :
             return False
         
-        filename = f"{Path(self.temp_folder).parent}/summary-{time.strftime('%Y%m%d-%H%M%S')}.pdf"
+        filename = f"{self.temp_folder.parent}/summary-{time.strftime('%Y%m%d-%H%M%S')}.pdf"
 
         doc = SimpleDocTemplate(filename, pagesize=A4)
         elements = []
@@ -170,11 +170,14 @@ class ExamReader :
         if not preview_pdf or len(preview_pdf) == 0 :
             return False
 
-        filename = f"{Path(self.temp_folder).parent}/preview-{time.strftime('%Y%m%d-%H%M%S')}.pdf"
+        filename = f"{self.temp_folder.parent}/preview-{time.strftime('%Y%m%d-%H%M%S')}.pdf"
+        namepages_folder = str(self.temp_folder.parent / "namepages")
+        os.makedirs(namepages_folder, exist_ok=True)
+        
         merger = PdfMerger()
         for (student, path) in preview_pdf :
             # Create a one-page PDF with the student's name
-            name_pdf_path = os.path.join(str(self.temp_folder), f"{student}_namepage.pdf")
+            name_pdf_path = os.path.join(namepages_folder, f"{student}_namepage.pdf")
             from reportlab.pdfgen import canvas
             from reportlab.lib.pagesizes import A4
             c = canvas.Canvas(name_pdf_path, pagesize=A4)
@@ -186,6 +189,7 @@ class ExamReader :
         merger.write(filename)
         merger.close()
         self.logger.info("Preview PDF created: " + filename)
+        shutil.rmtree(namepages_folder)
         return filename
 
     def get_preview_path(self) -> str:
@@ -206,8 +210,8 @@ class ExamReader :
             next_page = self.student_page_map[student][i+1]
             if pdf_manager.is_splittable_pair(page, next_page) :
                 self.logger.info(f"Pages {page['page_num']+1} and {next_page['page_num']+1} will be split.")
-                (output_page4, output_page1) = pdf_manager.split_a3(page)
-                (output_page2, output_page3) = pdf_manager.split_a3(next_page)
+                (output_page4, output_page1) = pdf_manager.split_a3(self.fitz_source_pdf, page["page_num"])
+                (output_page2, output_page3) = pdf_manager.split_a3(self.fitz_source_pdf, next_page["page_num"])
 
                 for page in (output_page1, output_page2, output_page3, output_page4) :
                     output_pdf.insert_pdf(page)
@@ -221,7 +225,7 @@ class ExamReader :
                 continue
 
         num_pages = len(output_pdf)
-        student_folder = str(self.temp_folder) + "/"+student
+        student_folder = str(self.temp_folder) + "/" + student
         os.makedirs(student_folder, exist_ok=True)
         output_file_path = os.path.join(student_folder, f"{student}.pdf")
         output_pdf.save(output_file_path)
