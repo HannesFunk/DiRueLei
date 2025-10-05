@@ -83,8 +83,7 @@ class ExamReader :
                 "Anzahl Seiten": num_pages}
             )
             preview_pdf.append([student, student_file_path])
-        self.summary_path = self._summary_pdf()
-        self.preview_path = self._create_preview_pdf(preview_pdf)
+        self.summary_path = self._create_summary(preview_pdf)
 
         with zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED) as zipf :
             for file in self.temp_folder.rglob('*'):
@@ -147,10 +146,52 @@ class ExamReader :
     def get_summary_path(self) -> str:
         return self.summary_path
     
-    def _summary_pdf(self):
+    def _fitz_add_file(self, total_fitz, path_to_add) :
+        fitz_add = fitz.open(path_to_add)
+        total_fitz.insert_pdf(fitz_add, from_page=1, to_page=len(fitz_add))
+        fitz_add.close()
+    
+    def _create_summary (self, preview_pdf) :
         summary = self.summary
-        filename = f"{self.temp_folder.parent}/summary-{time.strftime('%Y%m%d-%H%M%S')}.pdf"
-        doc = SimpleDocTemplate(filename, pagesize=A4)
+        sumpages_folder = str(self.temp_folder.parent / "sum_pages")
+        os.makedirs(sumpages_folder, exist_ok=True)
+        summary_title_path = self._build_summary_page(sumpages_folder)
+        summary_complete_file = f"{self.temp_folder.parent}/summary-{time.strftime('%Y%m%d-%H%M%S')}.pdf"
+        summary_fitz = fitz.open()
+        self._fitz_add_file(summary_fitz, summary_title_path)
+
+        if hasattr(self, 'missing_pages') and self.missing_pages:
+            missing_name_pdf_path = os.path.join(sumpages_folder, "missing_namepage.pdf")
+            c = canvas.Canvas(missing_name_pdf_path, pagesize=A4)
+            c.setFont("Helvetica-Bold", 32)
+            c.drawCentredString(A4[0]/2, A4[1]/2, "Nicht eingelesene Seiten")
+            c.save()
+            self._fitz_add_file(summary_fitz, missing_name_pdf_path)
+
+            for missing_page_num in self.missing_pages:
+                summary_fitz.insert_pdf(self.fitz_source_pdf, from_page=missing_page_num, to_page=missing_page_num)
+
+        for (student, path) in preview_pdf :
+            name_pdf_path = os.path.join(sumpages_folder, f"{student}_namepage.pdf")
+            c = canvas.Canvas(name_pdf_path, pagesize=A4)
+            c.setFont("Helvetica-Bold", 32)
+            c.drawCentredString(A4[0]/2, A4[1]/2, f"Schüler/-in: {student.split('_')[0]}")
+            c.save()
+            self._fitz_add_file(summary_fitz, name_pdf_path)
+            self._fitz_add_file(summary_fitz, path)
+
+        summary_fitz.save(summary_complete_file)
+        summary_fitz.close()
+        self.logger.info("Summary PDF created: " + summary_complete_file)
+        shutil.rmtree(sumpages_folder)
+
+        return summary_complete_file
+        
+    
+    def _build_summary_page (self, folder):
+        summary = self.summary
+        output_file = f"{folder}/summary-titlepage-{time.strftime('%Y%m%d-%H%M%S')}.pdf"
+        doc = SimpleDocTemplate(output_file, pagesize=A4)
         elements = []
         styles = getSampleStyleSheet()
         title = Paragraph("Zusammenfassung", styles['Title'])
@@ -183,48 +224,9 @@ class ExamReader :
             elements.append(Paragraph(f"<b>Nicht zugeordnete Seiten:</b> {len(self.missing_pages)} Seite(n): {missing_str}", styles['Normal']))
 
         doc.build(elements)
-        return filename
+
+        return output_file
     
-    def _create_preview_pdf(self, preview_pdf) :   
-        filename = f"{self.temp_folder.parent}/preview-{time.strftime('%Y%m%d-%H%M%S')}.pdf"
-        namepages_folder = str(self.temp_folder.parent / "namepages")
-        os.makedirs(namepages_folder, exist_ok=True)
-        merger = PdfMerger()
-
-        if hasattr(self, 'missing_pages') and self.missing_pages:
-            missing_name_pdf_path = os.path.join(namepages_folder, "missing_namepage.pdf")
-            c = canvas.Canvas(missing_name_pdf_path, pagesize=A4)
-            c.setFont("Helvetica-Bold", 32)
-            c.drawCentredString(A4[0]/2, A4[1]/2, "Nicht eingelesene Seiten")
-            c.save()
-            merger.append(missing_name_pdf_path)
-
-            for missing_page_num in self.missing_pages:
-                temp_missing_pdf_path = os.path.join(namepages_folder, f"missing_page_{missing_page_num+1}.pdf")
-                temp_pdf = fitz.open()
-                temp_pdf.insert_pdf(self.fitz_source_pdf, from_page=missing_page_num, to_page=missing_page_num)
-                temp_pdf.save(temp_missing_pdf_path)
-                temp_pdf.close()
-                merger.append(temp_missing_pdf_path)
-
-        for (student, path) in preview_pdf :
-            name_pdf_path = os.path.join(namepages_folder, f"{student}_namepage.pdf")
-            c = canvas.Canvas(name_pdf_path, pagesize=A4)
-            c.setFont("Helvetica-Bold", 32)
-            c.drawCentredString(A4[0]/2, A4[1]/2, f"Schüler/-in: {student.split('_')[0]}")
-            c.save()
-            merger.append(name_pdf_path)
-            merger.append(path)
-
-        merger.write(filename)
-        merger.close()
-        self.logger.info("Preview PDF created: " + filename)
-        shutil.rmtree(namepages_folder)
-        return filename
-
-    def get_preview_path(self) -> str:
-        return self.preview_path
-
     def _create_student_pdf(self, student : str) -> int :
         output_pdf = fitz.open()
         pdf_manager = PdfManager()
