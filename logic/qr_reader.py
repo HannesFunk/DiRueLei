@@ -66,8 +66,6 @@ class ExamReader :
                 return False
         
         while not temp_folder or not check_temp_folder_writable(temp_folder) :
-            root = tk.Tk()
-            root.withdraw()
             selected_folder = filedialog.askdirectory(title="Bitte wählen Sie einen temporären Ordner mit Schreibrechten")
             temp_folder = Path(selected_folder) if selected_folder else None
 
@@ -95,10 +93,7 @@ class ExamReader :
             warning_msg = f"Achtung: {len(self.missing_pages)} Seite(n) konnten keinem Schüler zugeordnet werden: {[p+1 for p in self.missing_pages]}. Bitte prüfen Sie die Zusammenfassung."
             self.logger.warning(warning_msg)
             try:
-                root = tk.Tk()
-                root.withdraw()
                 messagebox.showwarning("Nicht zugeordnete Seiten", warning_msg)
-                root.destroy()
             except Exception as e:
                 pass
             
