@@ -44,7 +44,7 @@ class MainPage(ctk.CTkFrame):
         box2 = NumberedBox(self, number=2, headline="QR-Codes erzeugen", text="Bitte CSV-Datei gemäß der Anleitung auswählen. QR-Codes werden dann als PDF-Datei erzeugt.", button_text=".csv auswählen", button_command=self.select_csv)
         box2.pack(fill="both", expand=True, pady=(0, 10))
 
-        box3 = NumberedBox(self, number=3, headline="LN bekleben und scannen", text="QR-Codes auf den Seiten anbringen. Empfehlung für Standardeinstellungen: nur auf Vorderseite (A4) bzw. erster Seite (A3)")
+        box3 = NumberedBox(self, number=3, headline="LN bekleben und scannen", text="QR-Codes auf den Seiten anbringen. Empfehlung für Standardeinstellungen: nur auf Vorderseite (A4) bzw. erster Seite (A3-Bogen). (Alternativ für Gerne-Kleber: auf jede Seite einen, dann bei Bögen immer auf der linken Hälfte.)")
         box3.pack(fill="both", expand=True, pady=(0, 10))
 
         box4 = NumberedBox(self, number=4, headline="Scan ", text="Gescannte Datei(en) auswählen", button_text="Scan(s) auswählen", button_command=self.select_scan_files)
