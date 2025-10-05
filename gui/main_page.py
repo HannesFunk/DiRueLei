@@ -69,6 +69,8 @@ class MainPage(ctk.CTkFrame):
         if hasattr(self, 'scan_page'):
             self.scan_page.pack_forget()
         self.pack(fill="both", expand=True, padx=20, pady=20)
+        self.master.update_idletasks()
+        self.master.update()
 
 
     def select_scan_files(self):
