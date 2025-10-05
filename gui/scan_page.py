@@ -16,10 +16,13 @@ class ScanPage(ctk.CTkFrame):
         label_title.pack(pady=(20,10), anchor="w", padx=20)
 
         self.two_page_scan = ctk.BooleanVar(value=False)
-        self.add_checkbox_with_explainer(self, "Zweiseitiger Scan", self.two_page_scan, "Das bedeutet: Es genügt, dass sich jeweils auf der ersten von zwei Seiten ein QR-Code befindet. Die folgende Seite ohne QR-Code wird automatisch demselben Schüler zugeordnet. Details siehe Dokumentation."
-                                         )
+        self.add_checkbox_with_explainer(self, "Zweiseitiger Scan", self.two_page_scan, "Das bedeutet: Es genügt, dass sich jeweils auf der ersten von zwei Seiten ein QR-Code befindet. Die folgende Seite ohne QR-Code wird automatisch demselben Schüler zugeordnet.")
+                                         
         self.split_a3 = ctk.BooleanVar(value=False)
-        self.add_checkbox_with_explainer(self, "A3-Bögen teilen", self.split_a3, "Das bedeutet: A3 Seiten werden in zwei A4 Seiten geteilt. Bei Bögen muss dazu der QR-Code auf dem Doppelbogen 1/4 ('außen') recht, der für Seiten 2/3 ('innen') rechts angebracht sein. Kann mit zweiseitigem Scan kombiniert werden.")
+        self.add_checkbox_with_explainer(self, "A3-Bögen teilen", self.split_a3, "Das bedeutet: A3 Seiten werden in zwei A4 Seiten geteilt. Bei Bögen muss dazu der QR-Code auf dem Doppelbogen 1/4 ('außen') rechts, der für Seiten 2/3 ('innen') links angebracht sein. Kann mit zweiseitigem Scan kombiniert werden, sodass nur außen rechts ein Code angebracht sein muss.")
+
+        self.quick_and_dirty = ctk.BooleanVar(value=False)
+        self.add_checkbox_with_explainer(self, "Quick and dirty", self.quick_and_dirty, "Das bedeutet: Auf der Folgeseite einer Seite mit QR-Code wird nur oberflächlich nach einem neuen Code gesucht und diese schneller gescannt und dem vorherigen zugeordnet. (Obacht!)", enabled=False)
 
         self.progress_bar = ctk.CTkProgressBar(self)
         self.progress_bar.pack(fill="x", expand=True, padx=20)
@@ -59,7 +62,8 @@ class ScanPage(ctk.CTkFrame):
             try :
                 scan_options = {
                     "split_a3": self.split_a3,
-                    "two_page_scan": self.two_page_scan
+                    "two_page_scan": self.two_page_scan,
+                    "quick_and_dirty": self.quick_and_dirty
                 }
                 reader = ExamReader(self.input_files, scan_options, self.logger, self.update_progress)
                 reader.readFiles()
@@ -77,9 +81,10 @@ class ScanPage(ctk.CTkFrame):
         threading.Thread(target=process_files).start()
         return
     
-    def add_checkbox_with_explainer(self, parent, text, variable, explainer_text=""):
+    def add_checkbox_with_explainer(self, parent, text, variable, explainer_text="", enabled=True):
         checkbox = ctk.CTkCheckBox(parent, text=text, variable=variable)
-        checkbox.select()
+        if enabled :
+            checkbox.select()
         checkbox.pack(anchor="nw", pady=5, padx=(20,10))
         if explainer_text == "" :
             return checkbox, None

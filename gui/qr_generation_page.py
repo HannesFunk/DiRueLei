@@ -35,7 +35,7 @@ class QRGenerationPage(ctk.CTkFrame):
         copies_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.label1 = ctk.CTkLabel(copies_frame, text="Anzahl QR-Codes pro Schüler-/in:")
         self.label1.grid(row=0, column=0, sticky="w", padx=20)
-        self.entry1 = ctk.CTkEntry(copies_frame, width=80)
+        self.entry1 = ctk.CTkEntry(copies_frame, width=80, placeholder_text="1")
         self.entry1.grid(row=0, column=1, sticky="w")
         copies_frame.grid(row=1, column=0, sticky="w")
 
