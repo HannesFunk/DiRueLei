@@ -1,9 +1,9 @@
 import customtkinter as ctk
-import os
 from tkinter import filedialog
 from logic.qr_generator import QRGenerator
 from gui.qr_generation_page import QRGenerationPage
 from gui.scan_page import ScanPage
+import webbrowser
 
 class NumberedBox(ctk.CTkFrame):
     def __init__(self, master, number: int, headline: str, text: str, button_text="", button_command=None, **kwargs):
@@ -30,13 +30,13 @@ class MainPage(ctk.CTkFrame):
         self.csv_path = None
         self.pack(fill="both", expand=True, padx=20, pady=20)
 
-        def open_instructions() :
-            instructions_path = os.path.join(os.path.dirname(__file__), "instructions.pdf")
+        def open_instructions():
             try:
-                os.startfile(instructions_path)
-            except AttributeError:
-                import subprocess
-                subprocess.Popen(["open", instructions_path])
+                webbrowser.open("https://hannesfunk.github.io/anleitung.pdf")
+            except Exception as e:
+                from tkinter import messagebox
+                messagebox.showerror("Fehler", f"Die Anleitung konnte nicht im Browser geöffnet werden.\n{e}")
+
 
         box1 = NumberedBox(self, number=1, headline="Abgabe im Mebis-Kurs erstellen", text="Bitte mit den Einstellungen aus der Anleitung eine Abgabe im Mebis-Kurs einrichten.", button_text="Anleitung", button_command=open_instructions)
         box1.pack(fill="both", expand=True, pady=(0, 10))

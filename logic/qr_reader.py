@@ -12,10 +12,11 @@ from PIL import Image
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm
 from reportlab.lib import colors
+from reportlab.pdfgen import canvas
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 import tkinter as tk
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
 from logic.pdf_manager import PdfManager
 
 ## Should the be refactored? Probably yes. Is it working? Also, yes.
@@ -24,8 +25,9 @@ class ExamReader :
 
     def __init__(self, input_files : list[str], scan_options, logger, progress_callback):
         self.progress_callback = progress_callback
-        self.split_a3 = scan_options["split_a3"] 
-        self.two_page_scan = scan_options["two_page_scan"]
+        self.split_a3 = scan_options.get("split_a3", False)
+        self.two_page_scan = scan_options.get("two_page_scan", False)
+        self.quick_and_dirty = scan_options.get("quick_and_dirty", False)
         self.logger = logger
         self.temp_scan_folder = self._ensure_temp_folder(input_files[0])
         self.temp_folder = self.temp_scan_folder / "temp"
@@ -88,7 +90,18 @@ class ExamReader :
                 zipf.write(file, file.relative_to(self.temp_folder))
         self.logger.info("ZIP file created: " + output_path)
         self.logger.info(f"Done. Created output for {len(self.student_page_map)} students.")
-        
+        # 1. Alert user if there are missing pages
+        if hasattr(self, 'missing_pages') and self.missing_pages:
+            warning_msg = f"Achtung: {len(self.missing_pages)} Seite(n) konnten keinem Schüler zugeordnet werden: {[p+1 for p in self.missing_pages]}. Bitte prüfen Sie die Zusammenfassung."
+            self.logger.warning(warning_msg)
+            try:
+                root = tk.Tk()
+                root.withdraw()
+                messagebox.showwarning("Nicht zugeordnete Seiten", warning_msg)
+                root.destroy()
+            except Exception as e:
+                pass
+            
     def close(self):
         self.fitz_source_pdf.close()
         if self.temp_folder.exists() and self.temp_folder.is_dir():
@@ -100,7 +113,10 @@ class ExamReader :
         (h,w) = img_cv.shape[:2]
         center = (w//2, h//2)
 
-        angles = [0] + [i for i in range(-15, 16) if i != 0]
+        if getattr(self, 'quick_and_dirty', False):
+            angles = [0]
+        else:
+            angles = [0] + [i for i in range(-15, 16) if i != 0]
         for angle in angles :
             matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
             rotated = cv2.warpAffine(img_cv, matrix, (w,h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
@@ -132,11 +148,7 @@ class ExamReader :
     
     def _summary_pdf(self):
         summary = self.summary
-        if not summary or len(summary) == 0 :
-            return False
-        
         filename = f"{self.temp_folder.parent}/summary-{time.strftime('%Y%m%d-%H%M%S')}.pdf"
-
         doc = SimpleDocTemplate(filename, pagesize=A4)
         elements = []
         styles = getSampleStyleSheet()
@@ -163,29 +175,45 @@ class ExamReader :
         ]))
         elements.append(table)
 
+        # 2. Add missing pages info to summary
+        if hasattr(self, 'missing_pages') and self.missing_pages:
+            elements.append(Spacer(1, 0.5*cm))
+            missing_str = ', '.join(str(p+1) for p in self.missing_pages)
+            elements.append(Paragraph(f"<b>Nicht zugeordnete Seiten:</b> {len(self.missing_pages)} Seite(n): {missing_str}", styles['Normal']))
+
         doc.build(elements)
         return filename
     
     def _create_preview_pdf(self, preview_pdf) :   
-        if not preview_pdf or len(preview_pdf) == 0 :
-            return False
-
         filename = f"{self.temp_folder.parent}/preview-{time.strftime('%Y%m%d-%H%M%S')}.pdf"
         namepages_folder = str(self.temp_folder.parent / "namepages")
         os.makedirs(namepages_folder, exist_ok=True)
-        
         merger = PdfMerger()
         for (student, path) in preview_pdf :
-            # Create a one-page PDF with the student's name
             name_pdf_path = os.path.join(namepages_folder, f"{student}_namepage.pdf")
-            from reportlab.pdfgen import canvas
-            from reportlab.lib.pagesizes import A4
             c = canvas.Canvas(name_pdf_path, pagesize=A4)
             c.setFont("Helvetica-Bold", 32)
             c.drawCentredString(A4[0]/2, A4[1]/2, f"Schüler/-in: {student.split('_')[0]}")
             c.save()
             merger.append(name_pdf_path)
             merger.append(path)
+
+        if hasattr(self, 'missing_pages') and self.missing_pages:
+            missing_name_pdf_path = os.path.join(namepages_folder, "missing_namepage.pdf")
+            c = canvas.Canvas(missing_name_pdf_path, pagesize=A4)
+            c.setFont("Helvetica-Bold", 32)
+            c.drawCentredString(A4[0]/2, A4[1]/2, "Nicht eingelesene Seiten")
+            c.save()
+            merger.append(missing_name_pdf_path)
+
+            for missing_page_num in self.missing_pages:
+                temp_missing_pdf_path = os.path.join(namepages_folder, f"missing_page_{missing_page_num+1}.pdf")
+                temp_pdf = fitz.open()
+                temp_pdf.insert_pdf(self.fitz_source_pdf, from_page=missing_page_num, to_page=missing_page_num)
+                temp_pdf.save(temp_missing_pdf_path)
+                temp_pdf.close()
+                merger.append(temp_missing_pdf_path)
+
         merger.write(filename)
         merger.close()
         self.logger.info("Preview PDF created: " + filename)
@@ -237,7 +265,7 @@ class ExamReader :
         pages_info = []
         total_pages = len(self.fitz_source_pdf)
         last_qr = None
-        missing_pages = []
+        self.missing_pages = []
         pdf_manager = PdfManager()
 
         for page_num in range (total_pages) : 
@@ -251,7 +279,7 @@ class ExamReader :
             elif self.two_page_scan :
                 if not last_qr :
                     self.logger.error(f"Error on page {page_num+1} of merged PDF: There seem to be two consecutive pages without QR-code or the first page does not have a QR code.")
-                    missing_pages.append(page_num)
+                    self.missing_pages.append(page_num)
                     continue
                 page_info = {"page_num": page_num, "size": size, "status": "from_previous", "value": last_qr, "side": "none"}
                 self.logger.info(f"No QR code on page {page_num+1} of merged PDF. Inferred from previous page.")
@@ -260,14 +288,14 @@ class ExamReader :
 
             else : 
                 self.logger.error(f"Read error: Page {page_num+1} has no QR-Code and option two_page_scan is not active.")
-                missing_pages.append(page_num)
+                self.missing_pages.append(page_num)
                 continue
             
             if self.progress_callback:
                 self.progress_callback((page_num+1)/total_pages)
 
-        if len(missing_pages) > 0:
-            self.logger.error("Same pages could not be assigned: " + str(missing_pages))
+        if len(self.missing_pages) > 0:
+            self.logger.error("Some pages could not be assigned: " + str(self.missing_pages))
         else :
             self.logger.info("All QR codes read.")
         return pages_info
