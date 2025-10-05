@@ -20,7 +20,7 @@ jobs:
       - name: Build exe
         run: pyinstaller gui.spec
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: windows-exe
           path: dist/*.exe
@@ -38,7 +38,7 @@ jobs:
       - name: Build app
         run: pyinstaller gui.spec
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: macos-app
           path: dist/*.app
@@ -56,7 +56,7 @@ jobs:
       - name: Build binary
         run: pyinstaller gui.spec
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: linux-binary
           path: dist/*
