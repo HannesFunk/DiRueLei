@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LN-Scan-Tool</title>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            min-height: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            padding: 30px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: #333;
+        }
+        
+        .step-box {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #3366cc;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .step-number {
+            background: #3366cc;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        
+        .step-content {
+            flex: 1;
+        }
+        
+        .step-headline {
+            font-weight: bold;
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .step-text {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.4;
+        }
+        
+        .step-button {
+            background: #3366cc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        
+        .step-button:hover {
+            background: #2851a3;
+        }
+        
+        .step-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .page {
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .file-drop {
+            border: 2px dashed #3366cc;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+            transition: all 0.3s;
+        }
+        
+        .file-drop:hover {
+            border-color: #2851a3;
+            background: #f8f9ff;
+        }
+        
+        .file-drop.dragover {
+            border-color: #2851a3;
+            background: #e6f0ff;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: #3366cc;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        
+        .log-area {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 6px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+        
+        .back-button {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        
+        .back-button:hover {
+            background: #545b62;
+        }
+        
+        .download-button {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+        
+        .download-button:hover {
+            background: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="loading" class="page">
+            <div class="header">
+                <h1>LN-Scan-Tool wird geladen...</h1>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="loadProgress"></div>
+                </div>
+                <p>Python-Umgebung wird initialisiert...</p>
+            </div>
+        </div>
+
+        <div id="mainPage" class="page hidden">
+            <div class="header">
+                <h1>LN-Scan-Tool</h1>
+                <p>Digitales Werkzeug zur automatischen Sortierung von Klausuren</p>
+            </div>
+
+            <div class="step-box">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <div class="step-headline">Abgabe im Mebis-Kurs erstellen</div>
+                    <div class="step-text">Bitte mit den Einstellungen aus der Anleitung eine Abgabe im Mebis-Kurs einrichten.</div>
+                </div>
+                <button class="step-button" onclick="openInstructions()">Anleitung</button>
+            </div>
+
+            <div class="step-box">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <div class="step-headline">QR-Codes erzeugen</div>
+                    <div class="step-text">Bitte CSV-Datei gemäß der Anleitung auswählen. QR-Codes werden dann als PDF-Datei erzeugt.</div>
+                </div>
+                <button class="step-button" onclick="selectCSV()">.csv auswählen</button>
+            </div>
+
+            <div class="step-box">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <div class="step-headline">LN bekleben und scannen</div>
+                    <div class="step-text">QR-Codes auf den Seiten anbringen. Empfehlung für Standardeinstellungen: nur auf Vorderseite (A4) bzw. erster Seite (A3-Bogen).</div>
+                </div>
+            </div>
+
+            <div class="step-box">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <div class="step-headline">Scan</div>
+                    <div class="step-text">Gescannte Datei(en) auswählen</div>
+                </div>
+                <button class="step-button" onclick="selectScanFiles()">Scan(s) auswählen</button>
+            </div>
+        </div>
+
+        <div id="qrGenerationPage" class="page hidden">
+            <button class="back-button" onclick="backToMain()">← Zurück</button>
+            <div class="header">
+                <h2>QR-Code Generierung</h2>
+            </div>
+            
+            <div class="file-drop" id="csvDrop">
+                <h3>CSV-Datei hier ablegen oder</h3>
+                <input type="file" id="csvFile" accept=".csv" style="margin-top: 10px;">
+                <p style="margin-top: 10px; color: #666;">Die CSV-Datei sollte Namen und IDs der Schüler enthalten</p>
+            </div>
+            
+            <div id="csvPreview" class="hidden">
+                <h3>CSV Vorschau:</h3>
+                <div id="csvContent" style="background: #f5f5f5; padding: 10px; border-radius: 4px; margin: 10px 0;"></div>
+                <button class="step-button" onclick="generateQRCodes()">QR-Codes generieren</button>
+            </div>
+            
+            <div class="progress-bar hidden" id="qrProgress">
+                <div class="progress-fill" id="qrProgressFill"></div>
+            </div>
+            
+            <div id="qrLog" class="log-area hidden"></div>
+            
+            <div id="qrDownload" class="hidden" style="text-align: center;">
+                <button class="download-button" onclick="downloadQRPDF()">QR-Codes PDF herunterladen</button>
+            </div>
+        </div>
+
+        <div id="scanPage" class="page hidden">
+            <button class="back-button" onclick="backToMain()">← Zurück</button>
+            <div class="header">
+                <h2>PDF Scan Verarbeitung</h2>
+            </div>
+            
+            <div class="file-drop" id="pdfDrop">
+                <h3>PDF-Dateien hier ablegen oder</h3>
+                <input type="file" id="pdfFiles" accept=".pdf" multiple style="margin-top: 10px;">
+                <p style="margin-top: 10px; color: #666;">Mehrere PDF-Dateien können gleichzeitig ausgewählt werden</p>
+                <div style="background: #d1ecf1; border: 1px solid #bee5eb; padding: 10px; border-radius: 4px; margin-top: 10px; font-size: 12px;">
+                    <strong>ℹ️ PyMuPDF Experimentell:</strong> Diese Version versucht PyMuPDF für echte QR-Code Erkennung zu verwenden. Falls es nicht funktioniert, wird auf Demo-Modus zurückgefallen.
+                </div>
+            </div>
+            
+            <div id="scanOptions" class="hidden" style="margin: 20px 0;">
+                <h3>Scan-Optionen:</h3>
+                <label style="display: block; margin: 10px 0;">
+                    <input type="checkbox" id="splitA3"> A3-Seiten teilen
+                </label>
+                <label style="display: block; margin: 10px 0;">
+                    <input type="checkbox" id="twoPageScan"> Zwei-Seiten-Scan (QR nur auf jeder 2. Seite)
+                </label>
+                <label style="display: block; margin: 10px 0;">
+                    <input type="checkbox" id="quickAndDirty"> Schnell-Modus (weniger Rotationen testen)
+                </label>
+                <button class="step-button" onclick="processPDFs()">PDFs verarbeiten</button>
+            </div>
+            
+            <div class="progress-bar hidden" id="scanProgress">
+                <div class="progress-fill" id="scanProgressFill"></div>
+            </div>
+            
+            <div id="scanLog" class="log-area hidden"></div>
+            
+            <div id="scanDownload" class="hidden" style="text-align: center;">
+                <button class="download-button" onclick="downloadResults()">Ergebnisse herunterladen</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app-new.js"></script>
+</body>
+</html>
