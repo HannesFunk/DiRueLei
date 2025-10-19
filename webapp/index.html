@@ -1,68 +1,16 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DiRueLei Web App</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        .container {
-            background-color: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .loading {
-            text-align: center;
-            color: #666;
-        }
-        .error {
-            color: #d32f2f;
-            background-color: #ffebee;
-            padding: 10px;
-            border-radius: 5px;
-            margin: 10px 0;
-        }
-        .success {
-            color: #388e3c;
-            background-color: #e8f5e8;
-            padding: 10px;
-            border-radius: 5px;
-            margin: 10px 0;
-        }
-        #output {
-            margin-top: 20px;
-            padding: 15px;
-            background-color: #f8f8f8;
-            border-radius: 5px;
-            min-height: 100px;
-        }
-        .progress {
-            width: 100%;
-            height: 20px;
-            background-color: #e0e0e0;
-            border-radius: 10px;
-            overflow: hidden;
-            margin: 10px 0;
-        }
-        .progress-bar {
-            height: 100%;
-            background-color: #4caf50;
-            width: 0%;
-            transition: width 0.3s ease;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
         <h1>DiRueLei Web Application</h1>
         
+        <!-- Loading Screen -->
         <div id="loading" class="loading">
             <p>Loading Pyodide and Python modules...</p>
             <div class="progress">
@@ -71,18 +19,150 @@
             <p id="loading-status">Initializing...</p>
         </div>
         
-        <div id="content" style="display: none;">
-            <h2>Welcome to DiRueLei!</h2>
-            <p>Python environment loaded successfully.</p>
+        <!-- Main Application -->
+        <div id="main-app" class="hidden">
             
-            <div id="output">
-                <h3>Output:</h3>
-                <div id="python-output"></div>
+            <!-- Main Page -->
+            <div id="main-page">
+                <div class="numbered-box">
+                    <div class="circle">1</div>
+                    <div class="box-content">
+                        <div class="box-title">Abgabe im Mebis-Kurs erstellen</div>
+                        <div class="box-description">Bitte mit den Einstellungen aus der Anleitung eine Abgabe im Mebis-Kurs einrichten.</div>
+                    </div>
+                    <button id ="open-instructions-btn" class="btn">Anleitung</button>
+                </div>
+
+                <div class="numbered-box">
+                    <div class="circle">2</div>
+                    <div class="box-content">
+                        <div class="box-title">QR-Codes erzeugen</div>
+                        <div class="box-description">Bitte CSV-Datei gemäß der Anleitung auswählen. QR-Codes werden dann als PDF-Datei erzeugt.</div>
+                    </div>
+                    <button class="btn" onclick="showQRGeneration()">CSV auswählen</button>
+                </div>
+
+                <div class="numbered-box">
+                    <div class="circle">3</div>
+                    <div class="box-content">
+                        <div class="box-title">LN bekleben und scannen</div>
+                        <div class="box-description">QR-Codes auf den Seiten anbringen. Empfehlung für Standardeinstellungen: nur auf Vorderseite (A4) bzw. erster Seite (A3-Bogen).</div>
+                    </div>
+                </div>
+
+                <div class="numbered-box">
+                    <div class="circle">4</div>
+                    <div class="box-content">
+                        <div class="box-title">Scan</div>
+                        <div class="box-description">Gescannte Datei(en) auswählen</div>
+                    </div>
+                    <button class="btn" onclick="showPDFScan()">Scan(s) auswählen</button>
+                </div>
+            </div>
+
+            <!-- QR Generation Page -->
+            <div id="qr-generation-page" class="hidden">
+                <h2>QR-Code Generierung</h2>
+                
+                <div class="file-input">
+                    <label for="csv-file">CSV-Datei auswählen:</label>
+                    <input type="file" id="csv-file" accept=".csv" />
+                </div>
+
+                <div id="qr-settings" class="qr-generation-settings hidden">
+                    <div class="setting-group">
+                        <label class="setting-label">Anzahl QR-Codes pro Schüler/-in:</label>
+                        <input type="number" id="copies" value="1" min="1" max="10">
+                    </div>
+
+                    <div class="setting-group">
+                        <label>
+                            <input type="checkbox" id="checkbox-use-offset"> 
+                            Ersten QR-Code an bestimmter Position setzen
+                        </label>
+                        <div id="offset-settings" class="hidden">
+                            <label>Zeile: <input type="number" id="offset-row" value="1" min="1"></label>
+                            <label>Spalte: <input type="number" id="offset-col" value="1" min="1"></label>
+                        </div>
+                    </div>
+
+                    <div class="setting-group">
+                        <label>
+                            <input type="checkbox" id="checkbox-select-students"> 
+                            Nur für bestimmte Schüler/-innen QR-Codes erstellen
+                        </label>
+                        <div id="student-selection" class="student-list hidden">
+                            <label><input type="checkbox" id="select-all" checked> Alle an-/abwählen</label>
+                            <div id="student-checkboxes"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-secondary" onclick="showMainPage()">Zurück zur Hauptseite</button>
+                    <button class="btn" id="generate-qr-btn"  disabled>QR-Codes erzeugen</button>
+                </div>
+            </div>
+
+            <!-- PDF Scan Page -->
+            <div id="pdf-scan-page" class="hidden">
+                <h2>PDF Scan Einstellungen</h2>
+                
+                <div class="file-input">
+                    <label for="pdf-files">PDF-Datei(en) auswählen:</label>
+                    <input type="file" id="pdf-files" accept=".pdf" multiple onchange="loadPDFs()">
+                </div>
+
+                <div id="scan-settings" class="scan-options hidden">
+                    <div class="checkbox-group">
+                        <label>
+                            <input type="checkbox" id="two-page-scan"> 
+                            Zweiseitiger Scan
+                        </label>
+                        <div class="checkbox-explanation">
+                            Das bedeutet: Es genügt, dass sich jeweils auf der ersten von zwei Seiten ein QR-Code befindet. 
+                            Die folgende Seite ohne QR-Code wird automatisch demselben Schüler zugeordnet.
+                        </div>
+                    </div>
+
+                    <div class="checkbox-group">
+                        <label>
+                            <input type="checkbox" id="split-a3"> 
+                            A3-Bögen teilen
+                        </label>
+                        <div class="checkbox-explanation">
+                            Das bedeutet: A3 Seiten werden in zwei A4 Seiten geteilt. Der QR-Code muss dabei außen angebracht sein.
+                        </div>
+                    </div>
+
+                    <div class="checkbox-group">
+                        <label>
+                            <input type="checkbox" id="quick-and-dirty" disabled> 
+                            Quick and dirty
+                        </label>
+                        <div class="checkbox-explanation">
+                            Das bedeutet: Auf der Folgeseite einer Seite mit QR-Code wird nur oberflächlich nach einem neuen Code gesucht.
+                        </div>
+                    </div>
+
+                    <div class="progress">
+                        <div id="scan-progress-bar" class="progress-bar"></div>
+                    </div>
+
+                    <div class="output-area" id="scan-output"></div>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-secondary" onclick="showMainPage()">Zurück zur Hauptseite</button>
+                    <button class="btn" id="process-pdf-btn" onclick="processPDFs()" disabled>PDFs einlesen</button>
+                    <button class="btn btn-secondary" id="download-results-btn" onclick="downloadResults()" disabled>Ergebnisse herunterladen</button>
+                </div>
             </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/pyodide/v0.28.3/full/pyodide.js"></script>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.28.0/full/pyodide.js"></script>
+    <script src="python_loader.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
