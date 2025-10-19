@@ -16,7 +16,6 @@ class DiRueLeiApp {
         // Python modules
         this.QRGenerator = null;
         this.ExamReader = null;
-        this.WebLogger = null;
         
         // Package configuration
         this.availablePackages = [
@@ -27,12 +26,17 @@ class DiRueLeiApp {
         
         this.micropipPackages = [
             'qrcode',
+            'pymupdf'
         ];
         
         this.experimentalPackages = [
             {
                 name: 'ReportLab',
                 url: 'https://files.pythonhosted.org/packages/57/66/e040586fe6f9ae7f3a6986186653791fb865947f0b745290ee4ab026b834/reportlab-4.4.4-py3-none-any.whl'
+            },
+            {
+                name: 'PyPDF2',
+                url: 'https://files.pythonhosted.org/packages/8e/5e/c86a5643653825d3c913719e788e41386bee415c2b87b4f955432f2de6b2/pypdf2-3.0.1-py3-none-any.whl'
             }
         ];
         
@@ -50,25 +54,25 @@ class DiRueLeiApp {
     
     async init() {
         try {
-            this.updateProgress('Loading Pyodide...');
+            this.updateProgress('Lade Pyodide...');
             
             // Load Pyodide
             this.pyodide = await loadPyodide({
-                indexURL: "https://cdn.jsdelivr.net/pyodide/v0.28.0/full/",
+                indexURL: "https://cdn.jsdelivr.net/pyodide/v0.28.3/full/",
             });
             this.pyodide.setDebug(true);
             
-            this.updateProgress('Pyodide loaded successfully');
+            this.updateProgress('Pyodide geladen.');
             
             // Load packages available in Pyodide
             for (const pkg of this.availablePackages) {
                 try {
-                    this.updateProgress(`Loading ${pkg}...`);
+                    this.updateProgress(`Lade ${pkg}...`);
                     await this.pyodide.loadPackage(pkg);
-                    console.log(`Successfully loaded ${pkg}`);
+                    console.log(`${pkg} geladen.`);
                 } catch (error) {
                     console.warn(`Failed to load ${pkg}:`, error);
-                    this.showMessage(`Warning: Could not load ${pkg}`, 'error');
+                    this.showMessage(`Fehler: ${pkg} konnte nicht geladen werden.`, 'error');
                 }
             }
             
@@ -102,7 +106,7 @@ class DiRueLeiApp {
                 }
             }
             
-            this.updateProgress('Loading Python modules...');
+            this.updateProgress('Lade Python-Module...');
             
             // Load our custom Python modules
             await this.loadPythonModules();
@@ -114,11 +118,11 @@ class DiRueLeiApp {
             this.loadingElement.style.display = 'none';
             this.mainAppElement.classList.remove('hidden');
             
-            this.showMessage('Application loaded successfully!', 'success');
+            this.showMessage('Anwendung erfolgreich geladen!', 'success');
             
         } catch (error) {
-            console.error('Failed to initialize Pyodide:', error);
-            this.showMessage(`Failed to load application: ${error.message}`, 'error');
+            console.error('Pyodide konnte nicht initialisiert werden.', error);
+            this.showMessage(`Anwendung konnte nicht geladen werden. Fehlermeldung: ${error.message}`, 'error');
         }
     }
     
@@ -134,7 +138,7 @@ class DiRueLeiApp {
             },
             {
                 name: 'exam_reader', 
-                path: './python_modules/exam_reader.py'
+                path: './python_modules/qr_reader.py'
             }
         ];
         
@@ -149,7 +153,7 @@ class DiRueLeiApp {
         // Get references to the Python classes
         this.QRGenerator = this.pyodide.globals.get('QRGenerator');
         this.ExamReader = this.pyodide.globals.get('ExamReader');
-        this.WebLogger = this.pyodide.globals.get('WebLogger');
+        this.PdfManager = this.pyodide.globals.get('PdfManager');
         
         console.log(`Successfully loaded ${results.successful.length} Python modules:`, results.successful);
     }
@@ -159,17 +163,116 @@ class DiRueLeiApp {
             {'id': 'open-instructions-btn', 'func': this.openInstructions, 'event': 'click'},
             {'id': 'csv-file', 'func': this.handleCsvFileUpload, 'event': 'change'},
             {'id': 'generate-qr-btn', 'func': this.generateQRPdf, 'event': 'click'},
-            {'id': 'pdf-files', 'func': this.handlePdfFilesUpload, 'event': 'click'},
+            {'id': 'pdf-files', 'func': this.handlePdfFilesUpload, 'event': 'change'},
             {'id': 'process-pdf-btn', 'func': this.startPdfScan, 'event': 'click'},
             {'id': 'checkbox-use-offset', 'func': this.toggleOffset, 'event': 'change'},
             {'id': 'checkbox-select-students', 'func': this.toggleSelectStudents, 'event': 'change'},
-            {'id': 'select-all', 'func': this.toggleSelectAll, 'event': 'change'},
+            {'id': 'select-all', 'func': this.toggleSelectAll, 'event': 'change'}
+           // {'id': 'download-results-btn', 'func': this.downloadResults(), 'event': 'click'},
+            
         ];
 
         for (const listener of listeners) {
             document.getElementById(listener.id).addEventListener(listener.event, listener.func.bind(this));
         }
 
+        // Set up drag and drop functionality
+        this.setupDragAndDrop();
+    }
+    
+    setupDragAndDrop() {
+        // CSV file drag and drop
+        const csvDropzone = document.getElementById('csv-dropzone');
+        const csvFileInput = document.getElementById('csv-file');
+        
+        if (csvDropzone && csvFileInput) {
+            this.setupDropzone(csvDropzone, csvFileInput, (files) => {
+                csvFileInput.files = files;
+                csvFileInput.dispatchEvent(new Event('change'));
+            });
+        }
+        
+        // PDF files drag and drop
+        const pdfDropzone = document.getElementById('pdf-dropzone');
+        const pdfFileInput = document.getElementById('pdf-files');
+        
+        if (pdfDropzone && pdfFileInput) {
+            this.setupDropzone(pdfDropzone, pdfFileInput, (files) => {
+                pdfFileInput.files = files;
+                pdfFileInput.dispatchEvent(new Event('change'));
+            });
+        }
+    }
+    
+    setupDropzone(dropzone, fileInput, onFilesSelected) {
+        // Click to browse
+        dropzone.addEventListener('click', () => {
+            fileInput.click();
+        });
+        
+        // Drag and drop events
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('dragover');
+        });
+        
+        dropzone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            if (!dropzone.contains(e.relatedTarget)) {
+                dropzone.classList.remove('dragover');
+            }
+        });
+        
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                // Create a FileList-like object
+                const dt = new DataTransfer();
+                for (let i = 0; i < files.length; i++) {
+                    dt.items.add(files[i]);
+                }
+                onFilesSelected(dt.files);
+            }
+        });
+        
+        // File input change event
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                dropzone.classList.add('has-files');
+                this.updateDropzoneText(dropzone, fileInput.files);
+            } else {
+                dropzone.classList.remove('has-files');
+                this.resetDropzoneText(dropzone);
+            }
+        });
+    }
+    
+    updateDropzoneText(dropzone, files) {
+        const uploadText = dropzone.querySelector('.upload-text');
+        if (uploadText && files.length > 0) {
+            const fileNames = Array.from(files).map(f => f.name).join(', ');
+            const primaryText = dropzone.querySelector('.upload-primary');
+            const secondaryText = dropzone.querySelector('.upload-secondary');
+            
+            if (primaryText && secondaryText) {
+                primaryText.textContent = `${files.length} Datei(en) ausgewählt`;
+                secondaryText.textContent = fileNames.length > 50 ? fileNames.substring(0, 50) + '...' : fileNames;
+            }
+        }
+    }
+    
+    resetDropzoneText(dropzone) {
+        const primaryText = dropzone.querySelector('.upload-primary');
+        const secondaryText = dropzone.querySelector('.upload-secondary');
+        
+        if (primaryText && secondaryText) {
+            const isCsv = dropzone.id === 'csv-dropzone';
+            primaryText.textContent = `Bewegen Sie ${isCsv ? 'CSV-Datei' : 'PDF-Datei(en)'} in dieses Feld (Drag&Drop)`;
+            secondaryText.textContent = 'oder klicken Sie hier zum Durchsuchen';
+        }
     }
 
     toggleOffset() {
@@ -233,6 +336,7 @@ class DiRueLeiApp {
             const csvData = await this.readFileAsText(file);
             this.showStatus('CSV-Datei geladen.', 'success');
             
+            this.readFileAsArrayBuffer
             this.qrGenerator = this.QRGenerator(csvData, file.name);
             const students = this.qrGenerator.get_students().toJs();
                     document.getElementById('generate-qr-btn').disabled = false;
@@ -323,7 +427,8 @@ class DiRueLeiApp {
             const pdfData = pdfBytes.constructor === Uint8Array ? pdfBytes : new Uint8Array(pdfBytes);
             
             // Download PDF
-            this.downloadFile(pdfData, 'qr-codes.pdf', 'application/pdf');
+            const outputFilename = this.qrGenerator.get_filename();
+            this.downloadFile(pdfData, outputFilename, 'application/pdf');
             
             this.showStatus('PDF mit QR-Codes erfolgreich erzeugt!', 'success');
             
@@ -366,37 +471,77 @@ class DiRueLeiApp {
     }
     
     async startPdfScan() {
+        this.showMessage("Start scanning.");
         if (!this.pdfFiles.length) {
             this.showStatus('Please upload PDF files first', 'error');
             return;
         }
         
         try {
+            // Reset progress bar
+            const progressBar = document.getElementById('scan-progress-bar');
+            if (progressBar) {
+                progressBar.style.width = '0%';
+                progressBar.textContent = '0%';
+                progressBar.setAttribute('aria-valuenow', 0);
+            }
+            
             this.showStatus('Scanning PDF files...', 'info');
             
             // Get scan options
             const scanOptions = {
-                split_a3: document.getElementById('split-a3').checked,
-                two_page_scan: document.getElementById('two-page-scan').checked,
-                quick_and_dirty: document.getElementById('quick-dirty').checked
+                'split_a3': document.getElementById('split-a3')?.checked || false,
+                'two_page_scan': document.getElementById('two-page-scan')?.checked || false,
+                'quick_and_dirty': document.getElementById('quick-and-dirty')?.checked || false
             };
             
-            // Create logger and progress callback
-            const logger = this.WebLogger();
+            const log = (msg, type) => {
+                const outputDiv = document.getElementById("scan-output");
+                let msgElement = document.createElement('div');
+                msgElement.classList.add("status-output");
+                msgElement.classList.add(type)
+                msgElement.innerText = msg;
+                outputDiv.appendChild(msgElement);
+            };
+
             const progressCallback = (progress) => {
-                console.log(`Scan progress: ${(progress * 100).toFixed(1)}%`);
+                // progress is a number between 0 and 1
+                const progressBar = document.getElementById('scan-progress-bar');
+                if (progressBar) {
+                    const percentage = Math.round(progress * 100);
+                    progressBar.style.width = percentage + '%';
+                    progressBar.setAttribute('aria-valuenow', percentage);
+                    
+                    // Optional: Add percentage text
+                    progressBar.textContent = percentage + '%';
+                    
+                    // Log progress for debugging
+                    console.log(`Scan progress: ${percentage}%`);
+                } else {
+                    console.warn('Progress bar element not found');
+                }
             };
+
+            // Convert PDF files to format expected by Python
+            const pdfFilesForPython = this.pdfFiles.map(file => ({
+                name: file.name,
+                data: Array.from(file.data)  // Convert Uint8Array to regular array for Pyodide
+            }));
             
-            // Create exam reader
-            this.examReader = this.ExamReader(scanOptions, logger, progressCallback);
-            
-            // Process PDF files
-            const success = this.examReader.process_pdf_files(this.pdfFiles);
+            this.examReader = this.ExamReader(pdfFilesForPython, scanOptions, log);
+            success = await this.examReader.process(progressCallback);
             
             if (success) {
                 // Create and download zip file
                 const zipBytes = this.examReader.create_zip_file();
                 this.downloadFile(zipBytes, 'scan-results.zip', 'application/zip');
+
+                const summaryElement = document.getElementById("download-results-btn");
+                summaryElement.addEventListener('click', 
+                    () => {
+                        const summaryBytes = this.examReader.get_summary_bytes();
+                        this.downloadFile(summaryBytes, 'Zusammenfassung.pdf', 'application/pdf');  
+                });
                 
                 // Display summary
                 const summary = this.examReader.get_summary();
@@ -408,7 +553,7 @@ class DiRueLeiApp {
             }
             
         } catch (error) {
-            this.showStatus(`Error scanning PDFs: ${error.message}`, 'error');
+            this.showStatus(`Error scanning PDFs: ${error.message}, ${error.stack}`, 'error');
         }
     }
     
@@ -488,7 +633,7 @@ class DiRueLeiApp {
         URL.revokeObjectURL(url);
     }
     
-    showStatus(message, type = 'info', duration = 5000) {
+    showStatus(message, type = 'info', duration = 10000) {
         console.log(`${type.toUpperCase()}: ${message}`);
         
         // Create or get the status container

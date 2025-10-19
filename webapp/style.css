@@ -20,21 +20,6 @@ body {
     color: #666;
 }
 
-.error {
-    color: #d32f2f;
-    background-color: #ffebee;
-    padding: 10px;
-    border-radius: 5px;
-    margin: 10px 0;
-}
-
-.success {
-    color: #388e3c;
-    background-color: #e8f5e8;
-    padding: 10px;
-    border-radius: 5px;
-    margin: 10px 0;
-}
 
 .progress {
     width: 100%;
@@ -50,6 +35,13 @@ body {
     background-color: #4caf50;
     width: 0%;
     transition: width 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 500;
+    font-size: 12px;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
 }
 
 .numbered-box {
@@ -125,6 +117,15 @@ body {
     margin: 10px 0;
 }
 
+input[type="number"] {
+    height: 1.7em;
+}
+
+#offset-settings {
+    margin-top: 15px;
+    margin-left: 30px;
+}
+
 .scan-options {
     margin: 20px 0;
 }
@@ -152,6 +153,16 @@ body {
     overflow-y: auto;
 }
 
+.output-area .error {
+    color: #c62828;
+}
+.output-area .success {
+    color: green;
+}
+.output-area .warning {
+    color: orange;
+}
+
 .button-group {
     display: flex;
     gap: 10px;
@@ -167,7 +178,6 @@ body {
 }
 
 .setting-label {
-    font-weight: bold;
     margin-bottom: 5px;
 }
 
@@ -176,17 +186,32 @@ body {
     overflow-y: auto;
     border: 1px solid #ddd;
     padding: 10px;
-    margin: 10px 0;
+    margin-top: 15px;
+    margin-left: 30px;
 }
 
 .student-checkbox {
     display: block;
-    margin: 5px 0;
-    padding: 3px;
+    margin: 2px 0;
+    padding: 8px 10px;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+}
+
+.student-checkbox:nth-child(odd) {
+    background-color: #f8f9fa;
+}
+
+.student-checkbox:nth-child(even) {
+    background-color: transparent;
+}
+
+.student-checkbox:hover {
+    background-color: #e3f2fd !important;
 }
 
 .student-checkbox input[type="checkbox"] {
-    margin-right: 8px;
+    margin-right: 10px;
 }
 
 #student-checkboxes {
@@ -237,10 +262,18 @@ body {
 
 .status-message.error {
     background: linear-gradient(135deg, #d32f2f 0%, #c62828 100%);
+    background-color: #ffebee;
+    padding: 10px;
+    border-radius: 5px;
+    margin: 10px 0;
 }
 
 .status-message.success {
     background: linear-gradient(135deg, #388e3c 0%, #2e7d32 100%);
+    background-color: #e8f5e8;
+    padding: 10px;
+    border-radius: 5px;
+    margin: 10px 0;
 }
 
 .status-message.info {
@@ -254,4 +287,141 @@ body {
     margin-left: 10px;
     cursor: pointer;
     opacity: 0.7;
+}
+
+/* Settings Separator Styles */
+.settings-separator {
+    margin: 30px 0 20px 0;
+}
+
+.settings-divider {
+    border: none;
+    height: 1px;
+    background-color: #ddd;
+    margin: 0 0 15px 0;
+}
+
+.settings-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+    padding-bottom: 10px;
+}
+
+/* File Upload Area Styles */
+.file-upload-area {
+    margin: 20px 0;
+}
+
+.file-upload-dropzone {
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    padding: 40px 20px;
+    text-align: center;
+    background-color: #fafafa;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.file-upload-dropzone:hover {
+    border-color: #1976d2;
+    background-color: #f3f8ff;
+}
+
+.file-upload-dropzone.dragover {
+    border-color: #1976d2;
+    background-color: #e3f2fd;
+    transform: scale(1.02);
+}
+
+.file-input-hidden {
+    position: absolute;
+    left: -9999px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.upload-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+.upload-icon {
+    color: #666;
+    transition: color 0.3s ease;
+}
+
+.file-upload-dropzone:hover .upload-icon {
+    color: #1976d2;
+}
+
+.upload-text {
+    text-align: center;
+}
+
+.upload-primary {
+    font-size: 16px;
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.upload-secondary {
+    font-size: 14px;
+    color: #666;
+}
+
+.file-info {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    font-size: 12px;
+    color: #888;
+}
+
+.file-type {
+    font-weight: 500;
+}
+
+.file-size {
+    opacity: 0.8;
+}
+
+/* File upload states */
+.file-upload-dropzone.has-files {
+    border-color: #388e3c;
+    background-color: #f1f8e9;
+}
+
+.file-upload-dropzone.has-files .upload-icon {
+    color: #388e3c;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .file-upload-dropzone {
+        padding: 30px 15px;
+        min-height: 100px;
+    }
+    
+    .upload-icon svg {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .upload-primary {
+        font-size: 14px;
+    }
+    
+    .upload-secondary {
+        font-size: 12px;
+    }
 }
