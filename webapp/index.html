@@ -64,9 +64,32 @@
             <div id="qr-generation-page" class="hidden">
                 <h2>QR-Code Generierung</h2>
                 
-                <div class="file-input">
-                    <label for="csv-file">CSV-Datei auswählen:</label>
-                    <input type="file" id="csv-file" accept=".csv" />
+                <div class="file-upload-area">
+                    <div class="file-upload-dropzone" id="csv-dropzone">
+                        <input type="file" id="csv-file" accept=".csv" class="file-input-hidden" />
+                        <div class="upload-content">
+                            <div class="upload-icon">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="7,10 12,15 17,10"></polyline>
+                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                </svg>
+                            </div>
+                            <div class="upload-text">
+                                <div class="upload-primary">Bewegen Sie CSV-Datei in dieses Feld (Drag&Drop)</div>
+                                <div class="upload-secondary">oder klicken Sie hier zum Durchsuchen</div>
+                            </div>
+                            <div class="file-info">
+                                <span class="file-type">CSV-Dateien</span>
+                                <span class="file-size">Maximale Dateigröße: 5 MB</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-separator">
+                    <hr class="settings-divider">
+                    <h3 class="settings-title">Einstellungen</h3>
                 </div>
 
                 <div id="qr-settings" class="qr-generation-settings hidden">
@@ -99,7 +122,7 @@
                 </div>
 
                 <div class="button-group">
-                    <button class="btn btn-secondary" onclick="showMainPage()">Zurück zur Hauptseite</button>
+                    <button class="btn btn-secondary" onclick="showMainPage();">Zurück zur Hauptseite</button>
                     <button class="btn" id="generate-qr-btn"  disabled>QR-Codes erzeugen</button>
                 </div>
             </div>
@@ -108,9 +131,27 @@
             <div id="pdf-scan-page" class="hidden">
                 <h2>PDF Scan Einstellungen</h2>
                 
-                <div class="file-input">
-                    <label for="pdf-files">PDF-Datei(en) auswählen:</label>
-                    <input type="file" id="pdf-files" accept=".pdf" multiple onchange="loadPDFs()">
+                <div class="file-upload-area">
+                    <div class="file-upload-dropzone" id="pdf-dropzone">
+                        <input type="file" id="pdf-files" accept=".pdf" multiple class="file-input-hidden" />
+                        <div class="upload-content">
+                            <div class="upload-icon">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="7,10 12,15 17,10"></polyline>
+                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                </svg>
+                            </div>
+                            <div class="upload-text">
+                                <div class="upload-primary">Bewegen Sie PDF-Datei(en) in dieses Feld (Drag&Drop)</div>
+                                <div class="upload-secondary">oder klicken Sie hier zum Durchsuchen</div>
+                            </div>
+                            <div class="file-info">
+                                <span class="file-type">PDF-Dateien</span>
+                                <span class="file-size">Maximale Dateigröße: 512 MB</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div id="scan-settings" class="scan-options hidden">
@@ -154,14 +195,14 @@
 
                 <div class="button-group">
                     <button class="btn btn-secondary" onclick="showMainPage()">Zurück zur Hauptseite</button>
-                    <button class="btn" id="process-pdf-btn" onclick="processPDFs()" disabled>PDFs einlesen</button>
-                    <button class="btn btn-secondary" id="download-results-btn" onclick="downloadResults()" disabled>Ergebnisse herunterladen</button>
+                    <button class="btn btn-secondary" id="download-results-btn" disabled>Zusammenfassung herunterladen</button>
+                    <button class="btn" id="process-pdf-btn" disabled>PDFs einlesen</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/pyodide/v0.28.0/full/pyodide.js"></script>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.28.3/full/pyodide.js"></script>
     <script src="python_loader.js"></script>
     <script src="app.js"></script>
 </body>

@@ -33,7 +33,7 @@ class QRGenerator:
         self.students = students_list
     
     def get_filename(self):
-        return "QR-Codes" + self.class_name
+        return "QR-Codes" + self.class_name + ".pdf"
 
     def _guess_class_from_filename(self, file_name) :
         class_string = re.search(r"_\d{1,2}[a-z]_", file_name)
