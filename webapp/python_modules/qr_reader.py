@@ -42,14 +42,10 @@ class ExamReader :
         msgElement.classList.add(type)
         msgElement.innerText = msg
         outputDiv.appendChild(msgElement)
+        outputDiv.scrollTop = outputDiv.scrollHeight
         
     async def logMsg_async(self, msg, type="info"):
-        outputDiv = js.document.getElementById("scan-output")
-        msgElement = js.document.createElement('div')
-        msgElement.classList.add("status-output")
-        msgElement.classList.add(type)
-        msgElement.innerText = msg
-        outputDiv.appendChild(msgElement)
+        self.logMsg(msg, type)
         await asyncio.sleep(0)
 
     async def update_progress (self, percentage) :
@@ -63,6 +59,7 @@ class ExamReader :
             self.student_page_map = self._create_student_page_map()
 
             self.saveZipFile()
+            await self.update_progress(1)
             return True
 
         except Exception as e:
@@ -215,8 +212,7 @@ class ExamReader :
         summary_data = summary_buffer.getvalue()
         
         # Store in in_memory_files for ZIP creation
-        self.in_memory_files[f"summary-{time.strftime('%Y%m%d-%H%M%S')}.pdf"] = summary_data
-        
+        self.in_memory_files["summary.pdf"] = summary_data
         self.logMsg("Summary PDF created in memory", "info")
         return summary_data
         
@@ -345,7 +341,7 @@ class ExamReader :
                 continue
             
             if self.progress_callback:
-                await self.update_progress((page_num+1)/total_pages)
+                await self.update_progress((page_num+1)/total_pages+1)
 
         if len(self.missing_pages) > 0:
             self.logMsg_async("Some pages could not be assigned: " + str([i+1 for i in self.missing_pages]), "error")
