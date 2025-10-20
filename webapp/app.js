@@ -684,6 +684,7 @@ function showMainPage() {
     if (scanPage) {
         scanPage.classList.add('hidden');
         document.getElementById("pdf-files").files = "";
+        document.getElementById("output-arear").innerHTML = "";
 
     }
 }
