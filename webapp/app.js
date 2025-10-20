@@ -40,7 +40,7 @@ class DiRueLeiApp {
             }
         ];
         
-        this.totalSteps = 2 + this.availablePackages.length + this.micropipPackages.length + this.experimentalPackages.length;
+        this.totalSteps = 2 + this.availablePackages.length + this.micropipPackages.length + this.experimentalPackages.length + 1;
         this.currentStep = 0;
     }
     
@@ -164,7 +164,7 @@ class DiRueLeiApp {
             {'id': 'csv-file', 'func': this.handleCsvFileUpload, 'event': 'change'},
             {'id': 'generate-qr-btn', 'func': this.generateQRPdf, 'event': 'click'},
             {'id': 'pdf-files', 'func': this.handlePdfFilesUpload, 'event': 'change'},
-            {'id': 'process-pdf-btn', 'func': this.startPdfScan, 'event': 'click'},
+            //{'id': 'process-pdf-btn', 'func': this.startPdfScan, 'event': 'click'},
             {'id': 'checkbox-use-offset', 'func': this.toggleOffset, 'event': 'change'},
             {'id': 'checkbox-select-students', 'func': this.toggleSelectStudents, 'event': 'change'},
             {'id': 'select-all', 'func': this.toggleSelectAll, 'event': 'change'}
@@ -176,12 +176,18 @@ class DiRueLeiApp {
             document.getElementById(listener.id).addEventListener(listener.event, listener.func.bind(this));
         }
 
-        // Set up drag and drop functionality
+        document.getElementById("process-pdf-btn").addEventListener('click', 
+            () => {
+                this.startPdfScan().then(
+                    () => {this.showMessage("Reading successful.");}
+                )
+                this.showMessage("Started reading process.");
+            }
+        );
         this.setupDragAndDrop();
     }
     
     setupDragAndDrop() {
-        // CSV file drag and drop
         const csvDropzone = document.getElementById('csv-dropzone');
         const csvFileInput = document.getElementById('csv-file');
         
@@ -192,7 +198,6 @@ class DiRueLeiApp {
             });
         }
         
-        // PDF files drag and drop
         const pdfDropzone = document.getElementById('pdf-dropzone');
         const pdfFileInput = document.getElementById('pdf-files');
         
@@ -205,7 +210,6 @@ class DiRueLeiApp {
     }
     
     setupDropzone(dropzone, fileInput, onFilesSelected) {
-        // Click to browse
         dropzone.addEventListener('click', () => {
             fileInput.click();
         });
@@ -471,19 +475,26 @@ class DiRueLeiApp {
     }
     
     async startPdfScan() {
-        this.showMessage("Start scanning.");
         if (!this.pdfFiles.length) {
             this.showStatus('Please upload PDF files first', 'error');
             return;
         }
         
         try {
-            // Reset progress bar
+            // Reset progress bar and make it visible
             const progressBar = document.getElementById('scan-progress-bar');
             if (progressBar) {
                 progressBar.style.width = '0%';
                 progressBar.textContent = '0%';
                 progressBar.setAttribute('aria-valuenow', 0);
+                
+                // Debug: Log initial styles
+                console.log('Initial progress bar styles:', {
+                    width: progressBar.style.width,
+                    display: window.getComputedStyle(progressBar).display,
+                    visibility: window.getComputedStyle(progressBar).visibility,
+                    height: window.getComputedStyle(progressBar).height
+                });
             }
             
             this.showStatus('Scanning PDF files...', 'info');
@@ -505,32 +516,29 @@ class DiRueLeiApp {
             };
 
             const progressCallback = (progress) => {
-                // progress is a number between 0 and 1
                 const progressBar = document.getElementById('scan-progress-bar');
                 if (progressBar) {
                     const percentage = Math.round(progress * 100);
+                    console.log('Setting progress to:', percentage + '%');
                     progressBar.style.width = percentage + '%';
                     progressBar.setAttribute('aria-valuenow', percentage);
-                    
-                    // Optional: Add percentage text
                     progressBar.textContent = percentage + '%';
-                    
-                    // Log progress for debugging
-                    console.log(`Scan progress: ${percentage}%`);
                 } else {
                     console.warn('Progress bar element not found');
                 }
             };
 
-            // Convert PDF files to format expected by Python
             const pdfFilesForPython = this.pdfFiles.map(file => ({
                 name: file.name,
-                data: Array.from(file.data)  // Convert Uint8Array to regular array for Pyodide
+                data: Array.from(file.data) 
             }));
             
             this.examReader = this.ExamReader(pdfFilesForPython, scanOptions, log);
-            success = await this.examReader.process(progressCallback);
-            
+            this.examReader.test_dom();
+            this.examReader.test_dom();
+            this.examReader.test_dom();
+      //      const success = await this.examReader.process(progressCallback);
+            const success = false 
             if (success) {
                 // Create and download zip file
                 const zipBytes = this.examReader.create_zip_file();

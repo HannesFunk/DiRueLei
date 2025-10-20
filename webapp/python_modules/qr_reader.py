@@ -4,6 +4,9 @@ import time
 from datetime import datetime
 import fitz
 import cv2
+import js
+import asyncio
+import traceback
 import numpy as np
 from PyPDF2 import PdfMerger
 from PIL import Image
@@ -27,25 +30,54 @@ class ExamReader :
         self.summary = []
         self.missing_pages = []
 
-        if logFunc :
-            self.logMsg = logFunc.to_py()
-            self.logMsg("Reader initialized", "success")
+        self.logMsg("Reader initialized", "success")
 
         self.fitz_source_pdf = self._merge_pdf(pdf_files_data)
         self.in_memory_files = {}  # Store generated files in memory
 
+    def logMsg(self, msg, type="info"):
+        outputDiv = js.document.getElementById("scan-output")
+        msgElement = js.document.createElement('div')
+        msgElement.classList.add("status-output")
+        msgElement.classList.add(type)
+        msgElement.innerText = msg
+        outputDiv.appendChild(msgElement)
+        
+    async def logMsg_async(self, msg, type="info"):
+        outputDiv = js.document.getElementById("scan-output")
+        msgElement = js.document.createElement('div')
+        msgElement.classList.add("status-output")
+        msgElement.classList.add(type)
+        msgElement.innerText = msg
+        outputDiv.appendChild(msgElement)
+        asyncio.sleep(0)
 
-    def process(self, callback) -> bool:
-        self.progress_callback = callback
+    async def update_progress (self, percentage) :
+        self.progress_callback(percentage)
+        asyncio.sleep(0)
+
+
+    async def test_dom(self):
         try :
-            self.pdf_page_array = self._read_qr_codes()
+            self.logMsg_async("Testing this")
+            time.sleep(4)
+            self.logMsg_async("Testing again")
+            return "Worked!"
+        except Exception as e:
+            return "Didn't work: "+str(e)
+
+
+    async def process(self, callback) -> bool:
+        self.progress_callback = callback
+        try:
+            self.pdf_page_array = await self._read_qr_codes()
             self.student_page_map = self._create_student_page_map()
 
             self.saveZipFile()
             return True
 
-        except Exception as e :
-            self.logMsg(f"Error: {str(e)}")
+        except Exception as e:
+            self.logMsg(f"Error: {str(e)}, Stack Trace: {traceback.format_exc()}")
             return False
 
 
@@ -116,7 +148,7 @@ class ExamReader :
         self.fitz_source_pdf.close()
         self.in_memory_files.clear()
             
-    def _extract_qr_code_from_page (self, page_number):
+    async def _extract_qr_code_from_page (self, page_number):
         img_cv = self._open_page_cv(page_number)
         detector = cv2.QRCodeDetector()
         (h,w) = img_cv.shape[:2]
@@ -134,7 +166,7 @@ class ExamReader :
             if data == "" :
                 continue
             
-            self.logMsg(f"QR-Code on page {page_number+1} read. Student: {data.split('_')[0]}{f' (angle {angle})' if angle != 0 else ''}", "info")
+            self.logMsg_async(f"QR-Code on page {page_number+1} read. Student: {data.split('_')[0]}{f' (angle {angle})' if angle != 0 else ''}", "info")
             data = data.replace("Teilnehmer/in", "")
 
             cx = int(points[0][:,0].mean())
@@ -294,7 +326,7 @@ class ExamReader :
         return [num_pages, pdf_data]
             
 
-    def _read_qr_codes(self) :
+    async def _read_qr_codes(self) :
         pages_info = []
         total_pages = len(self.fitz_source_pdf)
         last_qr = None
@@ -303,7 +335,7 @@ class ExamReader :
 
         for page_num in range (total_pages) : 
             size = pdf_manager.detect_page_size(self.fitz_source_pdf[page_num])
-            (qr, side) = self._extract_qr_code_from_page(page_num)
+            (qr, side) = await self._extract_qr_code_from_page(page_num)
             if qr:
                 page_info = {"page_num": page_num, "size": size, "status": "read", "value": qr, "side": side}
                 pages_info.append(page_info)
@@ -311,16 +343,16 @@ class ExamReader :
 
             elif self.two_page_scan :
                 if not last_qr :
-                    self.logMsg(f"Error on page {page_num+1} of merged PDF: There seem to be two consecutive pages without QR-code or the first page does not have a QR code.", "error")
+                    self.logMsg_async(f"Error on page {page_num+1} of merged PDF: There seem to be two consecutive pages without QR-code or the first page does not have a QR code.", "error")
                     self.missing_pages.append(page_num)
                     continue
                 page_info = {"page_num": page_num, "size": size, "status": "from_previous", "value": last_qr, "side": "none"}
-                self.logMsg(f"No QR code on page {page_num+1} of merged PDF. Inferred from previous page.", "info")
+                self.logMsg_async(f"No QR code on page {page_num+1} of merged PDF. Inferred from previous page.", "info")
                 pages_info.append(page_info)
                 last_qr = None
 
             else : 
-                self.logMsg(f"Read error: Page {page_num+1} has no QR-Code and option two_page_scan is not active.", "error")
+                self.logMsg_async(f"Read error: Page {page_num+1} has no QR-Code and option two_page_scan is not active.", "error")
                 self.missing_pages.append(page_num)
                 continue
             
@@ -328,9 +360,9 @@ class ExamReader :
                 self.progress_callback((page_num+1)/total_pages)
 
         if len(self.missing_pages) > 0:
-            self.logMsg("Some pages could not be assigned: " + str([i+1 for i in self.missing_pages]), "error")
+            self.logMsg_async("Some pages could not be assigned: " + str([i+1 for i in self.missing_pages]), "error")
         else :
-            self.logMsg("All QR codes read.", "info")
+            self.logMsg_async("All QR codes read.", "info")
         return pages_info
     
             
