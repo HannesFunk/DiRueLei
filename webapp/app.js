@@ -371,20 +371,17 @@ class DiRueLeiApp {
     populateStudentCheckboxes(students) {
         const studentCheckboxesContainer = document.getElementById('student-checkboxes');
         
-        // Clear existing checkboxes
         studentCheckboxesContainer.innerHTML = '';
         
-        // Create checkbox for each student
         students.forEach((student, index) => {
             const checkboxWrapper = document.createElement('label');
             checkboxWrapper.className = 'student-checkbox';
             
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
-            checkbox.checked = true; // Default to selected
+            checkbox.checked = true;
             checkbox.value = index;
             
-            // Display student name (assuming student object has name or similar property)
             const studentName = student.name || student.Name || student['Vollständiger Name'] || student.nachname || student.Nachname || `Schüler ${index + 1}`;
             
             checkboxWrapper.appendChild(checkbox);
@@ -403,7 +400,6 @@ class DiRueLeiApp {
         try {
             this.showStatus('Erzeuge PDF mit QR-Codes...', 'info');
             
-            // Get selected students
             const selectedStudents = this.getSelectedStudents();
             
             if (selectedStudents.length === 0) {
@@ -411,26 +407,20 @@ class DiRueLeiApp {
                 return;
             }
             
-            // Update the QRGenerator with selected students
             this.qrGenerator.set_students(selectedStudents);
             
-            // Get settings
             const copies = parseInt(document.getElementById('copies').value) || 1;
             const offset_row = parseInt(document.getElementById('offset-row').value) || 1;
             const offset_col = parseInt(document.getElementById('offset-col').value) || 1;
             
-            // Generate PDF - the Python method returns bytes
             const pdfBytes = this.qrGenerator.generate_qr_pdf_bytes(copies, offset_row, offset_col);
             
-            // Ensure we have valid PDF data
             if (!pdfBytes || pdfBytes.length === 0) {
                 throw new Error('Erzeugte PDF ist ungültig oder leer.');
             }
             
-            // Convert Python bytes to JavaScript Uint8Array if needed
             const pdfData = pdfBytes.constructor === Uint8Array ? pdfBytes : new Uint8Array(pdfBytes);
             
-            // Download PDF
             const outputFilename = this.qrGenerator.get_filename();
             this.downloadFile(pdfData, outputFilename, 'application/pdf');
             
@@ -456,18 +446,7 @@ class DiRueLeiApp {
                 });
             }
             
-            this.showStatus(`Loaded ${this.pdfFiles.length} PDF file(s)`, 'success');
-            
-            // Enable the process button and show scan settings
-            const processBtn = document.getElementById('process-pdf-btn');
-            if (processBtn) {
-                processBtn.disabled = false;
-            }
-            
-            const scanSettings = document.getElementById('scan-settings');
-            if (scanSettings) {
-                scanSettings.classList.remove('hidden');
-            }
+            document.getElementById('scan-settings')?.classList.remove('hidden');
             
         } catch (error) {
             this.showStatus(`Error reading PDF files: ${error.message}`, 'error');
@@ -485,7 +464,6 @@ class DiRueLeiApp {
             const progressBar = document.getElementById('scan-progress-bar');
             if (progressBar) {
                 progressBar.style.width = '0%';
-                progressBar.textContent = '0%';
                 progressBar.setAttribute('aria-valuenow', 0);
             }
             
@@ -499,10 +477,8 @@ class DiRueLeiApp {
                 const progressBar = document.getElementById('scan-progress-bar');
                 if (progressBar) {
                     const percentage = Math.round(progress * 100);
-                    console.log('Setting progress to:', percentage + '%');
                     progressBar.style.width = percentage + '%';
                     progressBar.setAttribute('aria-valuenow', percentage);
-                    progressBar.textContent = percentage + '%';
                 } else {
                     console.warn('Progress bar element not found');
                 }
@@ -517,7 +493,6 @@ class DiRueLeiApp {
             const success = await this.examReader.process(progressCallback);
             
             if (success) {
-                // Convert Python bytes to JavaScript Uint8Array
                 const zipBytesProxy = this.examReader.get_zip_bytes();
                 const zipBytes = new Uint8Array(zipBytesProxy.toJs());
                 zipBytesProxy.destroy(); // Clean up proxy
@@ -708,10 +683,11 @@ function showMainPage() {
     }
     if (scanPage) {
         scanPage.classList.add('hidden');
+        document.getElementById("pdf-files").files = "";
+
     }
 }
 
-// Initialize the application when the page loads
 let app;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -719,5 +695,4 @@ document.addEventListener('DOMContentLoaded', () => {
     app.init();
 });
 
-// Make app globally available for debugging
 window.diRueLeiApp = app;
