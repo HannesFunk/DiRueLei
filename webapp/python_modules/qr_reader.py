@@ -33,7 +33,7 @@ class ExamReader :
         self.logMsg("Reader initialized", "success")
 
         self.fitz_source_pdf = self._merge_pdf(pdf_files_data)
-        self.in_memory_files = {}  # Store generated files in memory
+        self.in_memory_files = {} 
 
     def logMsg(self, msg, type="info"):
         outputDiv = js.document.getElementById("scan-output")
@@ -81,7 +81,7 @@ class ExamReader :
                     file_data = file_data.to_py()
                 file_buffer = io.BytesIO(bytes(file_data))
                 merger.append(file_buffer)
-                self.logMsg(f"Added file {file.get('name', 'unknown')} to merger", "success")
+                self.logMsg(f"Added file {file.get('name', 'unknown')} to merger", "debug")
             except Exception as e:
                 self.logMsg(f"Error processing file in merger: {str(e)}", "error")
                 continue
@@ -331,22 +331,22 @@ class ExamReader :
                     self.missing_pages.append(page_num)
                     continue
                 page_info = {"page_num": page_num, "size": size, "status": "from_previous", "value": last_qr, "side": "none"}
-                self.logMsg_async(f"No QR code on page {page_num+1} of merged PDF. Inferred from previous page.", "info")
+                await self.logMsg_async(f"No QR code on page {page_num+1} of merged PDF. Inferred from previous page.", "info")
                 pages_info.append(page_info)
                 last_qr = None
 
             else : 
-                self.logMsg_async(f"Read error: Page {page_num+1} has no QR-Code and option two_page_scan is not active.", "error")
+                await self.logMsg_async(f"Read error: Page {page_num+1} has no QR-Code and option two_page_scan is not active.", "error")
                 self.missing_pages.append(page_num)
                 continue
             
             if self.progress_callback:
-                await self.update_progress((page_num+1)/total_pages+1)
+                await self.update_progress((page_num+1)/(total_pages+1))
 
         if len(self.missing_pages) > 0:
-            self.logMsg_async("Some pages could not be assigned: " + str([i+1 for i in self.missing_pages]), "error")
+            await self.logMsg_async("Some pages could not be assigned: " + str([i+1 for i in self.missing_pages]), "error")
         else :
-            self.logMsg_async("All QR codes read.", "info")
+            await self.logMsg_async("All QR codes read.", "info")
         return pages_info
     
             
