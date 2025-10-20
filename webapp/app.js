@@ -58,7 +58,7 @@ class DiRueLeiApp {
             
             // Load Pyodide
             this.pyodide = await loadPyodide({
-                indexURL: "https://cdn.jsdelivr.net/pyodide/v0.28.3/full/",
+                indexURL: "https://cdn.jsdelivr.net/pyodide/v0.29.0/full/",
             });
             this.pyodide.setDebug(true);
             
