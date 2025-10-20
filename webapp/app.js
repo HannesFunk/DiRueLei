@@ -72,7 +72,7 @@ class DiRueLeiApp {
                     console.log(`${pkg} geladen.`);
                 } catch (error) {
                     console.warn(`Failed to load ${pkg}:`, error);
-                    this.showMessage(`Fehler: ${pkg} konnte nicht geladen werden.`, 'error');
+                    this.showStatus(`Fehler: ${pkg} konnte nicht geladen werden.`, 'error');
                 }
             }
             
@@ -89,7 +89,7 @@ class DiRueLeiApp {
                         console.log(`Successfully installed ${pkg}`);
                     } catch (error) {
                         console.warn(`Failed to install ${pkg}:`, error);
-                        this.showMessage(`Warning: Could not install ${pkg}`, 'error');
+                        this.showStatus(`Warning: Could not install ${pkg}`, 'error');
                     }
                 }
                 
@@ -101,7 +101,7 @@ class DiRueLeiApp {
                         console.log(`Successfully installed experimental ${pkg.name}`);
                     } catch (error) {
                         console.warn(`Failed to install experimental ${pkg.name}:`, error);
-                        this.showMessage(`Warning: Could not install experimental ${pkg.name}`, 'error');
+                        this.showStatus(`Warning: Could not install experimental ${pkg.name}`, 'error');
                     }
                 }
             }
@@ -118,11 +118,11 @@ class DiRueLeiApp {
             this.loadingElement.style.display = 'none';
             this.mainAppElement.classList.remove('hidden');
             
-            this.showMessage('Anwendung erfolgreich geladen!', 'success');
+            this.showStatus('Anwendung erfolgreich geladen!', 'success', 3000);
             
         } catch (error) {
             console.error('Pyodide konnte nicht initialisiert werden.', error);
-            this.showMessage(`Anwendung konnte nicht geladen werden. Fehlermeldung: ${error.message}`, 'error');
+            this.showStatus(`Anwendung konnte nicht geladen werden. Fehlermeldung: ${error.message}`, 'error');
         }
     }
     
@@ -147,7 +147,7 @@ class DiRueLeiApp {
         
         if (results.failed.length > 0) {
             console.warn('Some Python modules failed to load:', results.failed);
-            this.showMessage(`Warning: ${results.failed.length} Python modules failed to load`, 'error');
+            this.showStatus(`Warning: ${results.failed.length} Python modules failed to load`, 'error');
         }
         
         // Get references to the Python classes
@@ -164,7 +164,7 @@ class DiRueLeiApp {
             {'id': 'csv-file', 'func': this.handleCsvFileUpload, 'event': 'change'},
             {'id': 'generate-qr-btn', 'func': this.generateQRPdf, 'event': 'click'},
             {'id': 'pdf-files', 'func': this.handlePdfFilesUpload, 'event': 'change'},
-            //{'id': 'process-pdf-btn', 'func': this.startPdfScan, 'event': 'click'},
+            {'id': 'process-pdf-btn', 'func': this.startPdfScan, 'event': 'click'},
             {'id': 'checkbox-use-offset', 'func': this.toggleOffset, 'event': 'change'},
             {'id': 'checkbox-select-students', 'func': this.toggleSelectStudents, 'event': 'change'},
             {'id': 'select-all', 'func': this.toggleSelectAll, 'event': 'change'}
@@ -176,14 +176,14 @@ class DiRueLeiApp {
             document.getElementById(listener.id).addEventListener(listener.event, listener.func.bind(this));
         }
 
-        document.getElementById("process-pdf-btn").addEventListener('click', 
-            () => {
-                this.startPdfScan().then(
-                    () => {this.showMessage("Reading successful.");}
-                )
-                this.showMessage("Started reading process.");
-            }
-        );
+        // document.getElementById("process-pdf-btn").addEventListener('click', 
+        //     () => {
+        //         this.startPdfScan().then(
+        //             () => {this.showStatus("Reading successful.");}
+        //         )
+        //         this.showStatus("Started reading process.");
+        //     }
+        // );
         this.setupDragAndDrop();
     }
     
@@ -361,7 +361,7 @@ class DiRueLeiApp {
         } catch (error) {
             console.error('Failed to open instructions:', error);
             if (window.diRueLeiApp) {
-                window.diRueLeiApp.showMessage('Die Anleitung konnte nicht im Browser geöffnet werden.', 'error');
+                window.diRueLeiApp.showStatus('Die Anleitung konnte nicht im Browser geöffnet werden.', 'error');
             } else {
                 alert('Die Anleitung konnte nicht im Browser geöffnet werden.');
             }
@@ -480,41 +480,21 @@ class DiRueLeiApp {
             return;
         }
         
+        this.showStatus('Scanne PDF...', 'info');
         try {
-            // Reset progress bar and make it visible
             const progressBar = document.getElementById('scan-progress-bar');
             if (progressBar) {
                 progressBar.style.width = '0%';
                 progressBar.textContent = '0%';
                 progressBar.setAttribute('aria-valuenow', 0);
-                
-                // Debug: Log initial styles
-                console.log('Initial progress bar styles:', {
-                    width: progressBar.style.width,
-                    display: window.getComputedStyle(progressBar).display,
-                    visibility: window.getComputedStyle(progressBar).visibility,
-                    height: window.getComputedStyle(progressBar).height
-                });
             }
             
-            this.showStatus('Scanning PDF files...', 'info');
-            
-            // Get scan options
             const scanOptions = {
                 'split_a3': document.getElementById('split-a3')?.checked || false,
                 'two_page_scan': document.getElementById('two-page-scan')?.checked || false,
                 'quick_and_dirty': document.getElementById('quick-and-dirty')?.checked || false
             };
             
-            const log = (msg, type) => {
-                const outputDiv = document.getElementById("scan-output");
-                let msgElement = document.createElement('div');
-                msgElement.classList.add("status-output");
-                msgElement.classList.add(type)
-                msgElement.innerText = msg;
-                outputDiv.appendChild(msgElement);
-            };
-
             const progressCallback = (progress) => {
                 const progressBar = document.getElementById('scan-progress-bar');
                 if (progressBar) {
@@ -533,27 +513,26 @@ class DiRueLeiApp {
                 data: Array.from(file.data) 
             }));
             
-            this.examReader = this.ExamReader(pdfFilesForPython, scanOptions, log);
-            this.examReader.test_dom();
-            this.examReader.test_dom();
-            this.examReader.test_dom();
-      //      const success = await this.examReader.process(progressCallback);
-            const success = false 
+            this.examReader = this.ExamReader(pdfFilesForPython, scanOptions);
+            const success = await this.examReader.process(progressCallback);
+            
             if (success) {
-                // Create and download zip file
-                const zipBytes = this.examReader.create_zip_file();
+                // Convert Python bytes to JavaScript Uint8Array
+                const zipBytesProxy = this.examReader.get_zip_bytes();
+                const zipBytes = new Uint8Array(zipBytesProxy.toJs());
+                zipBytesProxy.destroy(); // Clean up proxy
+                
                 this.downloadFile(zipBytes, 'scan-results.zip', 'application/zip');
 
                 const summaryElement = document.getElementById("download-results-btn");
                 summaryElement.addEventListener('click', 
                     () => {
-                        const summaryBytes = this.examReader.get_summary_bytes();
+                        const summaryBytesProxy = this.examReader.get_summary_bytes();
+                        const summaryBytes = new Uint8Array(summaryBytesProxy.toJs());
+                        summaryBytesProxy.destroy(); // Clean up proxy
+                        
                         this.downloadFile(summaryBytes, 'Zusammenfassung.pdf', 'application/pdf');  
                 });
-                
-                // Display summary
-                const summary = this.examReader.get_summary();
-                this.displayScanSummary(summary);
                 
                 this.showStatus('PDF scan completed successfully!', 'success');
             } else {
@@ -562,51 +541,6 @@ class DiRueLeiApp {
             
         } catch (error) {
             this.showStatus(`Error scanning PDFs: ${error.message}, ${error.stack}`, 'error');
-        }
-    }
-    
-    displayScanSummary(summary) {
-        // Create summary display
-        const summaryHtml = `
-            <div class="status-box">
-                <h4>Scan Results</h4>
-                <table style="width: 100%; border-collapse: collapse;">
-                    <thead>
-                        <tr>
-                            <th style="border: 1px solid #ddd; padding: 8px;">Student</th>
-                            <th style="border: 1px solid #ddd; padding: 8px;">Pages</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${summary.map(item => `
-                            <tr>
-                                <td style="border: 1px solid #ddd; padding: 8px;">${item['Schüler/-in']}</td>
-                                <td style="border: 1px solid #ddd; padding: 8px;">${item['Anzahl Seiten']}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
-        `;
-        
-        // Try to find scan output area, or create one
-        let outputArea = document.getElementById('scan-output');
-        if (!outputArea) {
-            // If no scan-output element, try to find the scan settings area
-            const scanSettings = document.getElementById('scan-settings');
-            if (scanSettings) {
-                outputArea = document.createElement('div');
-                outputArea.id = 'scan-output';
-                outputArea.className = 'output-area';
-                scanSettings.appendChild(outputArea);
-            }
-        }
-        
-        if (outputArea) {
-            outputArea.innerHTML = summaryHtml;
-        } else {
-            // Fallback: show in a status message
-            this.showStatus(`Scan completed: ${summary.length} students processed`, 'success');
         }
     }
     
@@ -722,11 +656,6 @@ class DiRueLeiApp {
         }
     }
     
-    showMessage(message, type = 'info') {
-        this.showStatus(message, type);
-    }
-    
-    // Public method to run Python code
     runPython(code) {
         if (!this.pyodide) {
             console.error('Pyodide not loaded yet');
@@ -737,7 +666,7 @@ class DiRueLeiApp {
             return this.pyodide.runPython(code);
         } catch (error) {
             console.error('Error running Python code:', error);
-            this.showMessage(`Python error: ${error.message}`, 'error');
+            this.showStatus(`Python error: ${error.message}`, 'error');
             return null;
         }
     }

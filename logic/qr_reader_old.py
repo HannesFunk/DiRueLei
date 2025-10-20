@@ -1,7 +1,9 @@
-import io
+import os
+import shutil
 import zipfile
 import time
 from datetime import datetime
+from pathlib import Path
 import fitz
 import cv2
 import numpy as np
@@ -13,6 +15,8 @@ from reportlab.lib import colors
 from reportlab.pdfgen import canvas
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
+import tkinter as tk
+from tkinter import filedialog, messagebox
 from logic.pdf_manager import PdfManager
 
 ## Should the be refactored? Probably yes. Is it working? Also, yes.
@@ -25,56 +29,78 @@ class ExamReader :
         self.two_page_scan = scan_options.get("two_page_scan", False)
         self.quick_and_dirty = scan_options.get("quick_and_dirty", False)
         self.logger = logger
+        self.temp_scan_folder = self._ensure_temp_folder(input_files[0])
+        self.temp_folder = self.temp_scan_folder / "temp"
+        self.temp_folder.mkdir(parents=True, exist_ok=True)
         self.fitz_source_pdf = self._merge_pdf(input_files)
-        self.in_memory_files = {}  # Store generated files in memory
 
     def readFiles(self) :
         self.pdf_page_array = self._read_qr_codes()
         self.student_page_map = self._create_student_page_map()
 
     def _merge_pdf(self, input_files) :
+        source_path = self.temp_scan_folder / f"merged_{datetime.now().strftime('%Y%m%d-%H%M%S')}.pdf"
         if len(input_files) > 1:
             merger = PdfMerger()
             for file in input_files :
                 merger.append(file)
-            merged_buffer = io.BytesIO()
-            merger.write(merged_buffer)
+            merger.write(source_path)
             merger.close()
-            merged_buffer.seek(0)
-            self.logger.info("PDFs merged in memory")
-            return fitz.open(stream=merged_buffer.getvalue(), filetype="pdf")
+            self.logger.info("Merged PDF saved to: " + str(source_path))
+            return fitz.open(source_path)
         else :
             return fitz.open(input_files[0])
 
+    def _ensure_temp_folder(self, file : str):
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        temp_folder = Path(file).parent / f"scan_{timestamp}"
 
+        def check_temp_folder_writable (folder) :
+            try:
+                temp_folder.mkdir(parents=True, exist_ok=True)
+                with open(folder / "test.txt", "w") as f:
+                    f.close()
+                os.remove(folder / "test.txt")
+                return True
+            except Exception:
+                return False
+        
+        while not temp_folder or not check_temp_folder_writable(temp_folder) :
+            selected_folder = filedialog.askdirectory(title="Bitte wählen Sie einen temporären Ordner mit Schreibrechten")
+            temp_folder = Path(selected_folder) if selected_folder else None
+
+        return temp_folder
 
     def saveZipFile(self, output_path) : 
         self.summary = []
         preview_pdf = []
         for student in self.student_page_map :
-            num_pages, student_file_data = self._create_student_pdf(student)
+            num_pages, student_file_path = self._create_student_pdf(student)
             self.summary.append({
                 "Schüler/-in": student.split("_")[0], 
                 "Anzahl Seiten": num_pages}
             )
-            preview_pdf.append([student, student_file_data])
-        self.summary_data = self._create_summary(preview_pdf)
+            preview_pdf.append([student, student_file_path])
+        self.summary_path = self._create_summary(preview_pdf)
 
         with zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED) as zipf :
-            for file_path, file_data in self.in_memory_files.items():
-                zipf.writestr(file_path, file_data)
+            for file in self.temp_folder.rglob('*'):
+                zipf.write(file, file.relative_to(self.temp_folder))
         self.logger.info("ZIP file created: " + output_path)
         self.logger.info(f"Done. Created output for {len(self.student_page_map)} students.")
         # 1. Alert user if there are missing pages
         if hasattr(self, 'missing_pages') and self.missing_pages:
             warning_msg = f"Achtung: {len(self.missing_pages)} Seite(n) konnten keinem Schüler zugeordnet werden: {[p+1 for p in self.missing_pages]}. Bitte prüfen Sie die Zusammenfassung."
             self.logger.warning(warning_msg)
-            # Remove messagebox since it requires GUI
-            self.logger.warning("Warning dialog skipped (no GUI available)")
+            try:
+                messagebox.showwarning("Nicht zugeordnete Seiten", warning_msg)
+            except Exception as e:
+                pass
             
     def close(self):
         self.fitz_source_pdf.close()
-        self.in_memory_files.clear()
+        if self.temp_folder.exists() and self.temp_folder.is_dir():
+            shutil.rmtree(self.temp_folder)
             
     def _extract_qr_code_from_page (self, page_number):
         img_cv = self._open_page_cv(page_number)
@@ -112,59 +138,55 @@ class ExamReader :
         return cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR) 
         
     
-    def get_summary_data(self) -> bytes:
-        return self.summary_data
+    def get_summary_path(self) -> str:
+        return self.summary_path
     
-    def _fitz_add_data(self, total_fitz, pdf_data) :
-        fitz_add = fitz.open(stream=pdf_data, filetype="pdf")
+    def _fitz_add_file(self, total_fitz, path_to_add) :
+        fitz_add = fitz.open(path_to_add)
         total_fitz.insert_pdf(fitz_add, from_page=0, to_page=len(fitz_add))
         fitz_add.close()
     
     def _create_summary (self, preview_pdf) :
         summary = self.summary
-        summary_title_data = self._build_summary_page()
+        sumpages_folder = str(self.temp_folder.parent / "sum_pages")
+        os.makedirs(sumpages_folder, exist_ok=True)
+        summary_title_path = self._build_summary_page(sumpages_folder)
+        summary_complete_file = f"{self.temp_folder.parent}/summary-{time.strftime('%Y%m%d-%H%M%S')}.pdf"
         summary_fitz = fitz.open()
-        self._fitz_add_data(summary_fitz, summary_title_data)
+        self._fitz_add_file(summary_fitz, summary_title_path)
 
         if hasattr(self, 'missing_pages') and self.missing_pages:
-            missing_name_buffer = io.BytesIO()
-            c = canvas.Canvas(missing_name_buffer, pagesize=A4)
+            missing_name_pdf_path = os.path.join(sumpages_folder, "missing_namepage.pdf")
+            c = canvas.Canvas(missing_name_pdf_path, pagesize=A4)
             c.setFont("Helvetica-Bold", 32)
             c.drawCentredString(A4[0]/2, A4[1]/2, "Nicht eingelesene Seiten")
             c.save()
-            missing_name_buffer.seek(0)
-            self._fitz_add_data(summary_fitz, missing_name_buffer.getvalue())
+            self._fitz_add_file(summary_fitz, missing_name_pdf_path)
 
             for missing_page_num in self.missing_pages:
                 summary_fitz.insert_pdf(self.fitz_source_pdf, from_page=missing_page_num, to_page=missing_page_num)
 
-        for (student, pdf_data) in preview_pdf :
-            name_page_buffer = io.BytesIO()
-            c = canvas.Canvas(name_page_buffer, pagesize=A4)
+        for (student, path) in preview_pdf :
+            name_pdf_path = os.path.join(sumpages_folder, f"{student}_namepage.pdf")
+            c = canvas.Canvas(name_pdf_path, pagesize=A4)
             c.setFont("Helvetica-Bold", 32)
             c.drawCentredString(A4[0]/2, A4[1]/2, f"Schüler/-in: {student.split('_')[0]}")
             c.save()
-            name_page_buffer.seek(0)
-            self._fitz_add_data(summary_fitz, name_page_buffer.getvalue())
-            self._fitz_add_data(summary_fitz, pdf_data)
+            self._fitz_add_file(summary_fitz, name_pdf_path)
+            self._fitz_add_file(summary_fitz, path)
 
-        summary_buffer = io.BytesIO()
-        summary_fitz.save(summary_buffer)
+        summary_fitz.save(summary_complete_file)
         summary_fitz.close()
-        summary_buffer.seek(0)
-        summary_data = summary_buffer.getvalue()
-        
-        # Store in in_memory_files for ZIP creation
-        self.in_memory_files[f"summary-{time.strftime('%Y%m%d-%H%M%S')}.pdf"] = summary_data
-        
-        self.logger.info("Summary PDF created in memory")
-        return summary_data
+        self.logger.info("Summary PDF created: " + summary_complete_file)
+        shutil.rmtree(sumpages_folder)
+
+        return summary_complete_file
         
     
-    def _build_summary_page (self):
+    def _build_summary_page (self, folder):
         summary = self.summary
-        output_buffer = io.BytesIO()
-        doc = SimpleDocTemplate(output_buffer, pagesize=A4)
+        output_file = f"{folder}/summary-titlepage-{time.strftime('%Y%m%d-%H%M%S')}.pdf"
+        doc = SimpleDocTemplate(output_file, pagesize=A4)
         elements = []
         styles = getSampleStyleSheet()
         title = Paragraph("Zusammenfassung", styles['Title'])
@@ -203,8 +225,7 @@ class ExamReader :
             elements.append(Paragraph(f"<b>Alle Seiten zugeordnet.</b>", styles['Normal']))
 
         doc.build(elements)
-        output_buffer.seek(0)
-        return output_buffer.getvalue()
+        return output_file
     
     def _create_student_pdf(self, student : str) -> int :
         output_pdf = fitz.open()
@@ -238,20 +259,12 @@ class ExamReader :
         num_pages = len(output_pdf)
         # Format: Participant_6028356_assignsubmission_file_
         student_id = student.split("_")[1]
-        student_folder = "Participant_" + student_id + "_assignsubmission_file_"
-        
-        # Save to memory buffer instead of file
-        output_buffer = io.BytesIO()
-        output_pdf.save(output_buffer)
+        student_folder = str(self.temp_folder) + "/" + "Participant_" + student_id + "_assignsubmission_file_"
+        os.makedirs(student_folder, exist_ok=True)
+        output_file_path = os.path.join(student_folder, f"{student}.pdf")
+        output_pdf.save(output_file_path)
         output_pdf.close()
-        output_buffer.seek(0)
-        pdf_data = output_buffer.getvalue()
-        
-        # Store in in_memory_files for ZIP creation
-        output_file_path = f"{student_folder}/{student}.pdf"
-        self.in_memory_files[output_file_path] = pdf_data
-        
-        return [num_pages, pdf_data]
+        return [num_pages, output_file_path]
             
 
     def _read_qr_codes(self) :

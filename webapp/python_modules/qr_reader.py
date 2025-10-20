@@ -18,7 +18,7 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib.styles import getSampleStyleSheet
 
 class ExamReader : 
-    def __init__(self, pdf_files_data, scan_options, logFunc=None):
+    def __init__(self, pdf_files_data, scan_options):
             
         options_dict = scan_options.to_py()
         self.split_a3 = options_dict.get("split_a3", False)
@@ -50,22 +50,11 @@ class ExamReader :
         msgElement.classList.add(type)
         msgElement.innerText = msg
         outputDiv.appendChild(msgElement)
-        asyncio.sleep(0)
+        await asyncio.sleep(0)
 
     async def update_progress (self, percentage) :
         self.progress_callback(percentage)
-        asyncio.sleep(0)
-
-
-    async def test_dom(self):
-        try :
-            self.logMsg_async("Testing this")
-            time.sleep(4)
-            self.logMsg_async("Testing again")
-            return "Worked!"
-        except Exception as e:
-            return "Didn't work: "+str(e)
-
+        await asyncio.sleep(0)
 
     async def process(self, callback) -> bool:
         self.progress_callback = callback
@@ -166,7 +155,7 @@ class ExamReader :
             if data == "" :
                 continue
             
-            self.logMsg_async(f"QR-Code on page {page_number+1} read. Student: {data.split('_')[0]}{f' (angle {angle})' if angle != 0 else ''}", "info")
+            await self.logMsg_async(f"QR-Code on page {page_number+1} read. Student: {data.split('_')[0]}{f' (angle {angle})' if angle != 0 else ''}", "info")
             data = data.replace("Teilnehmer/in", "")
 
             cx = int(points[0][:,0].mean())
@@ -174,7 +163,6 @@ class ExamReader :
             return (data, side)
             
         return (None, None)
-    
 
     def _open_page_cv (self, page_number) :
         zoom = 3
@@ -184,7 +172,7 @@ class ExamReader :
         return cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR) 
         
     
-    def get_summary_data(self) -> bytes:
+    def get_summary_bytes(self) -> bytes:
         return self.summary_data
     
     def _fitz_add_data(self, total_fitz, pdf_data) :
@@ -357,7 +345,7 @@ class ExamReader :
                 continue
             
             if self.progress_callback:
-                self.progress_callback((page_num+1)/total_pages)
+                await self.update_progress((page_num+1)/total_pages)
 
         if len(self.missing_pages) > 0:
             self.logMsg_async("Some pages could not be assigned: " + str([i+1 for i in self.missing_pages]), "error")
