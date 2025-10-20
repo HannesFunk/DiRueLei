@@ -108,6 +108,24 @@ body {
     color: white;
 }
 
+.btn-link {
+    background: none;
+    border: none;
+    color: #ef5350;
+    cursor: pointer;
+    font-size: 13px;
+    padding: 5px 10px;
+    text-decoration: none;
+    transition: color 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+}
+
+.btn-link:hover {
+    color: #d32f2f;
+    text-decoration: underline;
+}
+
 .hidden {
     display: none;
 }
@@ -423,7 +441,7 @@ input[type="number"] {
 
 /* Status Output Messages */
 .status-output {
-    padding: 6px 10px;
+    padding: 2px 10px;
     margin: 3px 0;
     border-left: 3px solid #666;
     background: #252526;
@@ -442,6 +460,11 @@ input[type="number"] {
 .status-output.info {
     border-left-color: #4fc3f7;
     color: #4fc3f7;
+}
+
+/* Debug messages - invisible */
+.status-output.debug {
+    display: none;
 }
 
 .status-output.info::before {
@@ -613,9 +636,9 @@ input[type="number"] {
     bottom: 0;
     left: 0;
     right: 0;
-    background: #1e1e1e;
-    border-top: 1px solid #333;
-    padding: 10px 20px;
+    background: #ccc;
+    padding-top: 5px;
+    padding-bottom: 5px;
     box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
     z-index: 100;
 }
@@ -629,9 +652,7 @@ input[type="number"] {
 }
 
 .version {
-    font-family: 'Courier New', Consolas, Monaco, monospace;
-    color: #4fc3f7;
-    font-size: 12px;
+    font-size: 10px;
     font-weight: 500;
     letter-spacing: 1px;
 }

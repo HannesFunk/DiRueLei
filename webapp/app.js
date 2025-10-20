@@ -164,11 +164,11 @@ class DiRueLeiApp {
             {'id': 'csv-file', 'func': this.handleCsvFileUpload, 'event': 'change'},
             {'id': 'generate-qr-btn', 'func': this.generateQRPdf, 'event': 'click'},
             {'id': 'pdf-files', 'func': this.handlePdfFilesUpload, 'event': 'change'},
+            {'id': 'clear-pdf-files-btn', 'func': this.clearPdfFiles, 'event': 'click'},
             {'id': 'process-pdf-btn', 'func': this.startPdfScan, 'event': 'click'},
             {'id': 'checkbox-use-offset', 'func': this.toggleOffset, 'event': 'change'},
             {'id': 'checkbox-select-students', 'func': this.toggleSelectStudents, 'event': 'change'},
             {'id': 'select-all', 'func': this.toggleSelectAll, 'event': 'change'}
-           // {'id': 'download-results-btn', 'func': this.downloadResults(), 'event': 'click'},
             
         ];
 
@@ -203,8 +203,9 @@ class DiRueLeiApp {
         
         if (pdfDropzone && pdfFileInput) {
             this.setupDropzone(pdfDropzone, pdfFileInput, (files) => {
+                // For PDFs, we want to append, not replace
                 pdfFileInput.files = files;
-                pdfFileInput.dispatchEvent(new Event('change'));
+                pdfFileInput.dispatchEvent(new Event('change', { detail: { append: true } }));
             });
         }
     }
@@ -437,20 +438,75 @@ class DiRueLeiApp {
         if (!files.length) return;
         
         try {
-            this.pdfFiles = [];
-            for (const file of files) {
-                const arrayBuffer = await this.readFileAsArrayBuffer(file);
-                this.pdfFiles.push({
-                    name: file.name,
-                    data: new Uint8Array(arrayBuffer)
-                });
+            // Initialize pdfFiles array if it doesn't exist
+            if (!this.pdfFiles) {
+                this.pdfFiles = [];
             }
             
+            // Add new files to existing ones instead of replacing
+            for (const file of files) {
+                // Check if file already exists
+                const exists = this.pdfFiles.some(f => f.name === file.name);
+                if (!exists) {
+                    const arrayBuffer = await this.readFileAsArrayBuffer(file);
+                    this.pdfFiles.push({
+                        name: file.name,
+                        data: new Uint8Array(arrayBuffer)
+                    });
+                }
+            }
+            
+            // Update the display
+            this.updatePdfFileList();
             document.getElementById('scan-settings')?.classList.remove('hidden');
             
         } catch (error) {
             this.showStatus(`Error reading PDF files: ${error.message}`, 'error');
         }
+    }
+    
+    updatePdfFileList() {
+        const dropzone = document.getElementById('pdf-dropzone');
+        if (dropzone && this.pdfFiles.length > 0) {
+            dropzone.classList.add('has-files');
+            const fileNames = this.pdfFiles.map(f => f.name).join(', ');
+            const primaryText = dropzone.querySelector('.upload-primary');
+            const secondaryText = dropzone.querySelector('.upload-secondary');
+            
+            if (primaryText && secondaryText) {
+                primaryText.textContent = `${this.pdfFiles.length} Datei(en) ausgewählt`;
+                secondaryText.textContent = fileNames.length > 80 ? fileNames.substring(0, 80) + '...' : fileNames;
+            }
+            
+            // Show the clear button
+            const clearBtn = document.getElementById('clear-pdf-files-btn');
+            if (clearBtn) {
+                clearBtn.classList.remove('hidden');
+            }
+        }
+    }
+    
+    clearPdfFiles() {
+        this.pdfFiles = [];
+        const dropzone = document.getElementById('pdf-dropzone');
+        const fileInput = document.getElementById('pdf-files');
+        
+        if (dropzone) {
+            dropzone.classList.remove('has-files');
+            this.resetDropzoneText(dropzone);
+        }
+        
+        if (fileInput) {
+            fileInput.value = '';
+        }
+        
+        // Hide the clear button
+        const clearBtn = document.getElementById('clear-pdf-files-btn');
+        if (clearBtn) {
+            clearBtn.classList.add('hidden');
+        }
+        
+        this.showStatus('Alle PDF-Dateien entfernt', 'info');
     }
     
     async startPdfScan() {
@@ -598,13 +654,13 @@ class DiRueLeiApp {
             }, duration);
         }
         
-        return statusDiv; // Return reference for manual removal if needed
+        return statusDiv; 
     }
     
     removeStatusMessage(statusDiv) {
-        if (!statusDiv || !statusDiv.parentNode) return;
+        if (!statusDiv || !statusDiv.parentNode) 
+            return;
         
-        // Animate out
         statusDiv.style.transform = 'translateX(100%)';
         statusDiv.style.opacity = '0';
         
@@ -619,16 +675,6 @@ class DiRueLeiApp {
                 }
             }
         }, 300);
-    }
-    
-    clearAllStatusMessages() {
-        const statusContainer = document.getElementById('status-container');
-        if (statusContainer) {
-            // Animate out all messages
-            Array.from(statusContainer.children).forEach(child => {
-                this.removeStatusMessage(child);
-            });
-        }
     }
     
     runPython(code) {
@@ -683,9 +729,11 @@ function showMainPage() {
     }
     if (scanPage) {
         scanPage.classList.add('hidden');
-        document.getElementById("pdf-files").files = "";
-        document.getElementById("output-arear").innerHTML = "";
-
+        document.getElementById("pdf-files").files = null;
+        const outputDiv = document.getElementById("output-area")
+        while (outputDiv.firstChild) {
+            outputDiv.firstChild.remove();
+        }
     }
 }
 
