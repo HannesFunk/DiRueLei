@@ -29,6 +29,8 @@ class ExamReader :
         
         self.summary = []
         self.missing_pages = []
+        self.log_callback = None  # Will be set by caller (main thread or worker)
+        self.progress_callback = None  # Will be set by caller
 
         self.logMsg("Reader initialized", "success")
 
@@ -36,24 +38,33 @@ class ExamReader :
         self.in_memory_files = {} 
 
     def logMsg(self, msg, type="info"):
-        outputDiv = js.document.getElementById("scan-output")
-        msgElement = js.document.createElement('div')
-        msgElement.classList.add("status-output")
-        msgElement.classList.add(type)
-        msgElement.innerText = msg
-        outputDiv.appendChild(msgElement)
-        outputDiv.scrollTop = outputDiv.scrollHeight
+        # Use callback if available (worker mode), otherwise use DOM (main thread mode)
+        if self.log_callback:
+            self.log_callback(msg, type)
+        else:
+            try:
+                outputDiv = js.document.getElementById("scan-output")
+                msgElement = js.document.createElement('div')
+                msgElement.classList.add("status-output")
+                msgElement.classList.add(type)
+                msgElement.innerText = msg
+                outputDiv.appendChild(msgElement)
+                outputDiv.scrollTop = outputDiv.scrollHeight
+            except:
+                # Fallback if DOM not available
+                print(f"[{type}] {msg}")
         
     async def logMsg_async(self, msg, type="info"):
         self.logMsg(msg, type)
         await asyncio.sleep(0)
 
     async def update_progress (self, percentage) :
-        self.progress_callback(percentage)
+        if self.progress_callback:
+            self.progress_callback(percentage)
         await asyncio.sleep(0)
 
-    async def process(self, callback) -> bool:
-        self.progress_callback = callback
+    async def process(self) -> bool:
+        # progress_callback should be set by caller before calling process()
         try:
             self.pdf_page_array = await self._read_qr_codes()
             self.student_page_map = self._create_student_page_map()

@@ -128,7 +128,7 @@ class QRGenerator:
                     img_buffer.close()
                     
                 except Exception as e:
-                    print(f"Error processing student {student.get('name', 'unknown')}: {str(e)}")
+                    raise RuntimeError(f"Error processing student {student['name']}: {str(e)}")
                     continue  # Skip this student and continue with others
 
             # Ensure the PDF is properly finalized

@@ -222,7 +222,7 @@ input[type="number"] {
 #status-container {
     pointer-events: none;
     position: fixed;
-    top: 20px;
+    bottom: 20px;
     right: 20px;
     z-index: 1000;
     display: flex;
@@ -264,7 +264,7 @@ input[type="number"] {
     background: linear-gradient(135deg, #388e3c 0%, #2e7d32 100%);
 }
 
-.status-message.info {
+.status-message.info, .status-message.init-progress {
     background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
 }
 

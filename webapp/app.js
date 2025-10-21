@@ -2,7 +2,6 @@
 
 class DiRueLeiApp {
     constructor() {
-        this.pyodide = null;
         this.loadingElement = document.getElementById('loading');
         this.mainAppElement = document.getElementById('main-app');
         this.progressBar = document.getElementById('progress-bar');
@@ -10,37 +9,16 @@ class DiRueLeiApp {
         
         // Application state
         this.pdfFiles = [];
-        this.examReader = null;
-        this.qrGenerator = null;
+        this.csvContent = null;
+        this.csvFilename = null;
+        this.allStudents = [];
         
-        // Python modules
-        this.QRGenerator = null;
-        this.ExamReader = null;
+        // Web Worker for all Python operations
+        this.scanWorker = null;
+        this.workerInitialized = false;
         
-        // Package configuration
-        this.availablePackages = [
-            'numpy',
-            'pillow',
-            'opencv-python'
-        ];
-        
-        this.micropipPackages = [
-            'qrcode',
-            'pymupdf'
-        ];
-        
-        this.experimentalPackages = [
-            {
-                name: 'ReportLab',
-                url: 'https://files.pythonhosted.org/packages/57/66/e040586fe6f9ae7f3a6986186653791fb865947f0b745290ee4ab026b834/reportlab-4.4.4-py3-none-any.whl'
-            },
-            {
-                name: 'PyPDF2',
-                url: 'https://files.pythonhosted.org/packages/8e/5e/c86a5643653825d3c913719e788e41386bee415c2b87b4f955432f2de6b2/pypdf2-3.0.1-py3-none-any.whl'
-            }
-        ];
-        
-        this.totalSteps = 2 + this.availablePackages.length + this.micropipPackages.length + this.experimentalPackages.length + 1;
+        // Simple progress tracking
+        this.totalSteps = 2;
         this.currentStep = 0;
     }
     
@@ -54,108 +32,157 @@ class DiRueLeiApp {
     
     async init() {
         try {
-            this.updateProgress('Lade Pyodide...');
-            
-            // Load Pyodide
-            this.pyodide = await loadPyodide({
-                indexURL: "https://cdn.jsdelivr.net/pyodide/v0.29.0/full/",
-            });
-            this.pyodide.setDebug(true);
-            
-            this.updateProgress('Pyodide geladen.');
-            
-            // Load packages available in Pyodide
-            for (const pkg of this.availablePackages) {
-                try {
-                    this.updateProgress(`Lade ${pkg}...`);
-                    await this.pyodide.loadPackage(pkg);
-                    console.log(`${pkg} geladen.`);
-                } catch (error) {
-                    console.warn(`Failed to load ${pkg}:`, error);
-                    this.showStatus(`Fehler: ${pkg} konnte nicht geladen werden.`, 'error');
-                }
-            }
-            
-            // Install packages via micropip
-            if (this.micropipPackages.length > 0 || this.experimentalPackages.length > 0) {
-                await this.pyodide.loadPackage("micropip");
-                const micropip = this.pyodide.pyimport("micropip");
-                
-                // Install regular packages
-                for (const pkg of this.micropipPackages) {
-                    try {
-                        this.updateProgress(`Installing ${pkg} via micropip...`);
-                        await micropip.install(pkg);
-                        console.log(`Successfully installed ${pkg}`);
-                    } catch (error) {
-                        console.warn(`Failed to install ${pkg}:`, error);
-                        this.showStatus(`Warning: Could not install ${pkg}`, 'error');
-                    }
-                }
-                
-                // Install experimental packages from specific URLs
-                for (const pkg of this.experimentalPackages) {
-                    try {
-                        this.updateProgress(`Installing experimental ${pkg.name}...`);
-                        await micropip.install(pkg.url);
-                        console.log(`Successfully installed experimental ${pkg.name}`);
-                    } catch (error) {
-                        console.warn(`Failed to install experimental ${pkg.name}:`, error);
-                        this.showStatus(`Warning: Could not install experimental ${pkg.name}`, 'error');
-                    }
-                }
-            }
-            
-            this.updateProgress('Lade Python-Module...');
-            
-            // Load our custom Python modules
-            await this.loadPythonModules();
+            this.updateProgress('Initialisiere Anwendung...');
             
             // Set up event listeners
             this.setupEventListeners();
             
-            // Hide loading screen and show main app
+            this.updateProgress('Starte Web Worker...');
+            
+            // Initialize the scan worker (this loads Pyodide in background)
+            this.initializeScanWorker();
+            
+            // Hide loading screen and show main app immediately
             this.loadingElement.style.display = 'none';
             this.mainAppElement.classList.remove('hidden');
             
-            this.showStatus('Anwendung erfolgreich geladen!', 'success', 3000);
+            this.showStatus('Anwendung geladen! Python-Umgebung wird im Hintergrund initialisiert...', 'success', 3000);
             
         } catch (error) {
-            console.error('Pyodide konnte nicht initialisiert werden.', error);
+            console.error('Anwendung konnte nicht initialisiert werden.', error);
             this.showStatus(`Anwendung konnte nicht geladen werden. Fehlermeldung: ${error.message}`, 'error');
         }
     }
     
-    async loadPythonModules() {
-        // Create Python module loader
-        const moduleLoader = new PythonModuleLoader(this.pyodide);
-        
-        // Define modules to load
-        const moduleConfig = [
-            {
-                name: 'qr_generator',
-                path: './python_modules/qr_generator.py'
-            },
-            {
-                name: 'exam_reader', 
-                path: './python_modules/qr_reader.py'
-            }
-        ];
-        
-        // Load all Python modules
-        const results = await moduleLoader.loadAllModules(moduleConfig);
-        
-        if (results.failed.length > 0) {
-            console.warn('Some Python modules failed to load:', results.failed);
-            this.showStatus(`Warning: ${results.failed.length} Python modules failed to load`, 'error');
+
+    initializeScanWorker() {
+        if (this.scanWorker) {
+            return;
         }
         
-        // Get references to the Python classes
-        this.QRGenerator = this.pyodide.globals.get('QRGenerator');
-        this.ExamReader = this.pyodide.globals.get('ExamReader');
-        this.PdfManager = this.pyodide.globals.get('PdfManager');
+        console.log('Initializing scan worker...');
+        this.scanWorker = new Worker('scan-worker.js');
         
-        console.log(`Successfully loaded ${results.successful.length} Python modules:`, results.successful);
+        this.scanWorker.onmessage = (event) => {
+            this.handleWorkerMessage(event.data);
+        };
+        
+        this.scanWorker.onerror = (error) => {
+            console.error('Worker error:', error);
+            this.showStatus(`Worker error: ${error.message}`, 'error');
+        };
+        
+        this.showStatus('Initializiere Anwendung...', 'info');
+        this.scanWorker.postMessage({ type: 'INIT' });
+    }
+    
+    handleWorkerMessage(data) {
+        switch (data.type) {
+            case 'READY':
+                console.log('Application loaded.');
+                break;
+                
+            case 'INITIALIZED':
+                this.workerInitialized = true;
+                console.log('Scan worker ready', 'success');
+                this.showStatus('Pakete vollständig geladen.', 'success'); 
+                while (document.getElementsByClassName("init-progress").length > 0) {
+                    document.getElementsByClassName("init-progress")[0].remove();
+                }
+                break;
+                
+            case 'INIT_PROGRESS':
+                console.log(`Loading package ${data.current}/${data.total}: ${data.package}`);
+                this.showStatus(`Lade ${data.package} (Paket ${data.current}/${data.total})...`, 'init-progress');
+                break;
+                
+            case 'SCAN_PROGRESS':
+                this.updateScanProgress(data.percentage);
+                break;
+                
+            case 'LOG':
+                console.log(data.message);
+                // fall-through
+        
+            case 'SCAN_LOG':
+                this.handleWorkerLog(data.message, data.level);
+                break;
+                
+            case 'QR_COMPLETE':
+                this.handleQRComplete(data);
+                break;
+                
+            case 'SCAN_COMPLETE':
+                this.handleScanComplete(data);
+                break;
+                
+            case 'ERROR':
+                this.showStatus(data.message, 'error');
+                console.error('Worker error:', data.message);
+                break;
+                
+            default:
+                console.warn('Unknown worker message type:', data.type);
+        }
+    }
+    
+    updateScanProgress(percentage) {
+        const progressBar = document.getElementById('scan-progress-bar');
+        if (progressBar) {
+            const percent = Math.round(percentage * 100);
+            progressBar.style.width = percent + '%';
+            progressBar.textContent = percent + '%';
+            progressBar.setAttribute('aria-valuenow', percent);
+        }
+    }
+    
+    handleWorkerLog(message, level) {
+        // Add log message to the output area
+        const outputDiv = document.getElementById('scan-output');
+        if (outputDiv) {
+            const msgElement = document.createElement('div');
+            msgElement.classList.add('status-output');
+            msgElement.classList.add(level);
+            msgElement.innerText = message;
+            outputDiv.appendChild(msgElement);
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+        }
+    }
+    
+    handleScanComplete(data) {
+        try {
+            // Download the ZIP file
+            this.downloadFile(data.zipBytes, 'scan-results.zip', 'application/zip');
+            
+            // Setup summary download button
+            const summaryElement = document.getElementById("download-results-btn");
+            if (summaryElement) {
+                // Remove old listeners by cloning the element
+                const newSummaryElement = summaryElement.cloneNode(true);
+                summaryElement.parentNode.replaceChild(newSummaryElement, summaryElement);
+                
+                // Store summary bytes for download
+                this.summaryBytes = data.summaryBytes;
+                
+                newSummaryElement.addEventListener('click', () => {
+                    this.downloadFile(this.summaryBytes, 'Zusammenfassung.pdf', 'application/pdf');
+                });
+            }
+            
+            this.showStatus('PDF scan completed successfully!', 'success');
+        } catch (error) {
+            this.showStatus(`Error handling scan results: ${error.message}`, 'error');
+        }
+    }
+    
+    handleQRComplete(data) {
+        try {
+            // Download the generated QR PDF
+            this.downloadFile(data.pdfBytes, data.filename, 'application/pdf');
+            this.showStatus('QR-Codes erfolgreich erzeugt!', 'success');
+        } catch (error) {
+            this.showStatus(`Fehler beim Verarbeiten der QR-Codes: ${error.message}`, 'error');
+        }
     }
     
     setupEventListeners() {
@@ -175,15 +202,6 @@ class DiRueLeiApp {
         for (const listener of listeners) {
             document.getElementById(listener.id).addEventListener(listener.event, listener.func.bind(this));
         }
-
-        // document.getElementById("process-pdf-btn").addEventListener('click', 
-        //     () => {
-        //         this.startPdfScan().then(
-        //             () => {this.showStatus("Reading successful.");}
-        //         )
-        //         this.showStatus("Started reading process.");
-        //     }
-        // );
         this.setupDragAndDrop();
     }
     
@@ -316,17 +334,16 @@ class DiRueLeiApp {
         
         // If student selection is not enabled, return all students
         if (!selectStudentsCheckbox.checked) {
-            return this.qrGenerator.get_students();
+            return this.allStudents || [];
         }
         
-        // Get all students and filter by selected checkboxes
-        const allStudents = this.qrGenerator.get_students();
+        // Filter by selected checkboxes
         const selectedStudents = [];
         
         const studentCheckboxes = document.querySelectorAll('#student-checkboxes input[type="checkbox"]');
         studentCheckboxes.forEach((checkbox, index) => {
-            if (checkbox.checked && index < allStudents.length) {
-                selectedStudents.push(allStudents[index]);
+            if (checkbox.checked && index < this.allStudents.length) {
+                selectedStudents.push(this.allStudents[index]);
             }
         });
         
@@ -339,17 +356,15 @@ class DiRueLeiApp {
         
         try {
             const csvData = await this.readFileAsText(file);
-            this.showStatus('CSV-Datei geladen.', 'success');
+            this.csvContent = csvData;
+            this.csvFilename = file.name;
+            this.allStudents = this.parseCSV(csvData);
             
-            this.readFileAsArrayBuffer
-            this.qrGenerator = this.QRGenerator(csvData, file.name);
-            const students = this.qrGenerator.get_students().toJs();
-                    document.getElementById('generate-qr-btn').disabled = false;
-        
+            document.getElementById('generate-qr-btn').disabled = false;
             document.getElementById('qr-settings').classList.remove('hidden');
             
-            this.showStatus(`Daten für ${students.length} Schüler-/innen eingelesen.`, 'success');
-            this.populateStudentCheckboxes(students);
+            this.showStatus(`Daten für ${this.allStudents.length} Schüler-/innen eingelesen.`, 'success');
+            this.populateStudentCheckboxes(this.allStudents);
             
         } catch (error) {
             this.showStatus(`Fehler bei Lesen der CSV-Datei: ${error.message} ${error.stack}`, 'error');
@@ -367,6 +382,23 @@ class DiRueLeiApp {
                 alert('Die Anleitung konnte nicht im Browser geöffnet werden.');
             }
         }
+    }
+    
+    parseCSV(csvText) {
+        const lines = csvText.trim().split('\n');
+        if (lines.length < 2) 
+            return [];
+        
+        const students = [];
+        
+        for (let i = 1; i < lines.length; i++) {
+            const values = lines[i].split(',').map(v => v.trim());
+            students.push({
+                id: values[0] || '',      
+                name: String(values[1]).replaceAll('"', '') || ''      
+            });
+        }
+        return students;
     }
     
     populateStudentCheckboxes(students) {
@@ -393,8 +425,26 @@ class DiRueLeiApp {
     }
     
     async generateQRPdf() {
-        if (!this.qrGenerator) {
+        if (!this.csvContent) {
             this.showStatus('Noch keine CSV-Datei ausgewählt.', 'error');
+            return;
+        }
+        
+        // Initialize worker if not already done
+        if (!this.scanWorker) {
+            this.initializeScanWorker();
+        }
+        
+        // Wait for worker to be ready
+        if (!this.workerInitialized) {
+            this.showStatus('Warten auf Worker-Initialisierung...', 'info');
+            // Set up a one-time listener to retry when worker is ready
+            const checkReady = setInterval(() => {
+                if (this.workerInitialized) {
+                    clearInterval(checkReady);
+                    this.generateQRPdf(); // Retry
+                }
+            }, 100);
             return;
         }
         
@@ -408,24 +458,22 @@ class DiRueLeiApp {
                 return;
             }
             
-            this.qrGenerator.set_students(selectedStudents);
-            
             const copies = parseInt(document.getElementById('copies').value) || 1;
-            const offset_row = parseInt(document.getElementById('offset-row').value) || 1;
-            const offset_col = parseInt(document.getElementById('offset-col').value) || 1;
+            const offsetRow = parseInt(document.getElementById('offset-row').value) || 1;
+            const offsetCol = parseInt(document.getElementById('offset-col').value) || 1;
             
-            const pdfBytes = this.qrGenerator.generate_qr_pdf_bytes(copies, offset_row, offset_col);
-            
-            if (!pdfBytes || pdfBytes.length === 0) {
-                throw new Error('Erzeugte PDF ist ungültig oder leer.');
-            }
-            
-            const pdfData = pdfBytes.constructor === Uint8Array ? pdfBytes : new Uint8Array(pdfBytes);
-            
-            const outputFilename = this.qrGenerator.get_filename();
-            this.downloadFile(pdfData, outputFilename, 'application/pdf');
-            
-            this.showStatus('PDF mit QR-Codes erfolgreich erzeugt!', 'success');
+            // Send QR generation request to worker
+            this.scanWorker.postMessage({
+                type: 'GENERATE_QR',
+                data: {
+                    csvContent: this.csvContent,
+                    copies: copies,
+                    offsetRow: offsetRow,
+                    offsetCol: offsetCol,
+                    selectedStudents: selectedStudents,
+                    csvFilename: this.csvFilename
+                }
+            });
             
         } catch (error) {
             console.error('PDF generation error:', error);
@@ -511,67 +559,80 @@ class DiRueLeiApp {
     
     async startPdfScan() {
         if (!this.pdfFiles.length) {
-            this.showStatus('Please upload PDF files first', 'error');
+            this.showStatus('Bitte laden Sie zuerst PDF-Dateien hoch', 'error');
+            return;
+        }
+        
+        // Initialize worker if not already done
+        if (!this.scanWorker) {
+            this.initializeScanWorker();
+        }
+        
+        // Wait for worker to be ready
+        if (!this.workerInitialized) {
+            this.showStatus('Warten auf Worker-Initialisierung...', 'info');
+            // Set up a listener to start scan when worker is ready
+            const originalHandler = this.handleWorkerMessage.bind(this);
+            this.handleWorkerMessage = (data) => {
+                originalHandler(data);
+                if (data.type === 'INITIALIZED') {
+                    this.startPdfScan(); // Retry scan
+                }
+            };
             return;
         }
         
         this.showStatus('Scanne PDF...', 'info');
+        
         try {
+            // Reset progress bar
             const progressBar = document.getElementById('scan-progress-bar');
             if (progressBar) {
                 progressBar.style.width = '0%';
+                progressBar.textContent = '0%';
                 progressBar.setAttribute('aria-valuenow', 0);
             }
             
-            const scanOptions = {
-                'split_a3': document.getElementById('split-a3')?.checked || false,
-                'two_page_scan': document.getElementById('two-page-scan')?.checked || false,
-                'quick_and_dirty': document.getElementById('quick-and-dirty')?.checked || false
-            };
-            
-            const progressCallback = (progress) => {
-                const progressBar = document.getElementById('scan-progress-bar');
-                if (progressBar) {
-                    const percentage = Math.round(progress * 100);
-                    progressBar.style.width = percentage + '%';
-                    progressBar.setAttribute('aria-valuenow', percentage);
-                } else {
-                    console.warn('Progress bar element not found');
-                }
-            };
-
-            const pdfFilesForPython = this.pdfFiles.map(file => ({
-                name: file.name,
-                data: Array.from(file.data) 
-            }));
-            
-            this.examReader = this.ExamReader(pdfFilesForPython, scanOptions);
-            const success = await this.examReader.process(progressCallback);
-            
-            if (success) {
-                const zipBytesProxy = this.examReader.get_zip_bytes();
-                const zipBytes = new Uint8Array(zipBytesProxy.toJs());
-                zipBytesProxy.destroy(); // Clean up proxy
-                
-                this.downloadFile(zipBytes, 'scan-results.zip', 'application/zip');
-
-                const summaryElement = document.getElementById("download-results-btn");
-                summaryElement.addEventListener('click', 
-                    () => {
-                        const summaryBytesProxy = this.examReader.get_summary_bytes();
-                        const summaryBytes = new Uint8Array(summaryBytesProxy.toJs());
-                        summaryBytesProxy.destroy(); // Clean up proxy
-                        
-                        this.downloadFile(summaryBytes, 'Zusammenfassung.pdf', 'application/pdf');  
-                });
-                
-                this.showStatus('PDF scan completed successfully!', 'success');
-            } else {
-                this.showStatus('PDF scan failed', 'error');
+            // Clear output area
+            const outputDiv = document.getElementById('scan-output');
+            if (outputDiv) {
+                outputDiv.innerHTML = '';
             }
             
+            // Get scan options
+            const scanOptions = {
+                twoPageScan: document.getElementById('two-page-scan')?.checked || false,
+                splitA3: document.getElementById('split-a3')?.checked || false,
+                quickAndDirty: document.getElementById('quick-and-dirty')?.checked || false
+            };
+            
+            // Prepare PDF files for transfer to worker
+            // Use Transferable objects for efficiency (transfers ownership, no copy)
+            const transferList = [];
+            const pdfFilesForWorker = this.pdfFiles.map(file => {
+                const buffer = file.data.buffer;
+                transferList.push(buffer);
+                return {
+                    name: file.name,
+                    data: file.data
+                };
+            });
+            
+            // Send scan request to worker
+            this.scanWorker.postMessage({
+                type: 'SCAN_START',
+                data: {
+                    pdfFiles: pdfFilesForWorker,
+                    options: scanOptions
+                }
+            }, transferList);
+            
+            // Note: After transfer, this.pdfFiles data will be empty (transferred to worker)
+            // We'll need to reload if user wants to scan again
+            
         } catch (error) {
-            this.showStatus(`Error scanning PDFs: ${error.message}, ${error.stack}`, 'error');
+            this.showStatus(`Fehler beim Scannen der PDFs: ${error.message}`, 'error');
+            console.error('Scan error:', error);
         }
     }
     
@@ -608,6 +669,12 @@ class DiRueLeiApp {
     
     showStatus(message, type = 'info', duration = 10000) {
         console.log(`${type.toUpperCase()}: ${message}`);
+
+        const initStatus = document.getElementsByClassName("init-progress")[0];
+        if (type == "init-progress" && initStatus) {
+            initStatus.textContent = message;
+            return;
+        }
         
         // Create or get the status container
         let statusContainer = document.getElementById('status-container');
@@ -648,7 +715,7 @@ class DiRueLeiApp {
         }, 50);
         
         // Auto-remove after specified duration (if duration > 0)
-        if (duration > 0) {
+        if (duration > 0 && type != "init-progress") {
             setTimeout(() => {
                 this.removeStatusMessage(statusDiv);
             }, duration);
