@@ -379,10 +379,6 @@ input[type="number"] {
     font-weight: 500;
 }
 
-.file-size {
-    opacity: 0.8;
-}
-
 /* File upload states */
 .file-upload-dropzone.has-files {
     border-color: #388e3c;
@@ -648,15 +644,84 @@ input[type="number"] {
     display: flex;
     justify-content: center;
     align-items: center;
-}
-
-.version {
+    gap: 10px;
     font-size: 10px;
     font-weight: 500;
     letter-spacing: 1px;
 }
 
+.footer-separator {
+    color: #666;
+}
+
+.footer-link {
+    color: #1976d2;
+    text-decoration: none;
+    letter-spacing: 0.5px;
+    transition: color 0.2s ease;
+}
+
+.footer-link:hover {
+    color: #1565c0;
+    text-decoration: underline;
+}
+
 /* Add padding to body to prevent content from being hidden behind footer */
 body {
     padding-bottom: 50px;
+}
+
+/* Datenschutz Page Styles */
+.datenschutz-content {
+    line-height: 1.8;
+    color: #333;
+}
+
+.datenschutz-content h2 {
+    color: #1976d2;
+    margin-top: 0;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #1976d2;
+}
+
+.datenschutz-content h3 {
+    color: #333;
+    margin-top: 30px;
+    margin-bottom: 15px;
+    font-size: 18px;
+}
+
+.datenschutz-section {
+    margin: 25px 0;
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #1976d2;
+}
+
+.datenschutz-section.highlight-box {
+    background-color: #fff3cd;
+    border-left-color: #ff9800;
+}
+
+.datenschutz-section.highlight-box h3 {
+    color: #e65100;
+}
+
+.datenschutz-content ul {
+    margin: 15px 0;
+    padding-left: 25px;
+}
+
+.datenschutz-content li {
+    margin: 8px 0;
+}
+
+.datenschutz-content strong {
+    font-weight: 600;
+    color: #1976d2;
+}
+
+.highlight-box strong {
+    color: #e65100;
 }

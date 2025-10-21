@@ -765,9 +765,37 @@ function showMainPage() {
 
 let app;
 
+// Function to update footer with deployment timestamp
+async function updateFooterTimestamp() {
+    try {
+        // Fetch the current page to get Last-Modified header
+        const response = await fetch(window.location.href, { method: 'HEAD' });
+        const lastModified = response.headers.get('Last-Modified');
+        
+        if (lastModified) {
+            const date = new Date(lastModified);
+            const formatted = date.toLocaleString('de-DE', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            const versionElement = document.querySelector('.upload-time');
+            if (versionElement) {
+                versionElement.innerHTML = ` vom ${formatted} `;
+            }
+        }
+    } catch (error) {
+        console.log('Could not fetch deployment timestamp:', error);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     app = new DiRueLeiApp();
     app.init();
+    updateFooterTimestamp();
 });
 
 window.diRueLeiApp = app;
