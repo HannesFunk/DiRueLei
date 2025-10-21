@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Datenschutzhinweise - DiRueLei</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Datenschutzhinweise</h1>
+        
+        <div class="datenschutz-content">
+            <h2>Datenschutz bei DiRueLei</h2>
+            
+            <div class="datenschutz-section">
+                <h3>🔒 Vollständige Offline-Verarbeitung</h3>
+                <p>
+                    DiRueLei ist eine Web-Anwendung, die <strong>vollständig im Browser</strong> ausgeführt wird. 
+                    Alle Daten werden <strong>ausschließlich lokal auf Ihrem Gerät</strong> verarbeitet.
+                </p>
+                <ul>
+                    <li><strong>Keine Server-Uploads:</strong> Weder CSV-Dateien noch PDF-Dokumente werden auf einen Server hochgeladen.</li>
+                    <li><strong>Keine Cloud-Speicherung:</strong> Alle Verarbeitungsschritte finden lokal im Browser statt.</li>
+                    <li><strong>Keine externe Datenübertragung:</strong> Es werden keine personenbezogenen Daten an Dritte weitergegeben.</li>
+                    <li><strong>Keine Tracking-Cookies:</strong> DiRueLei verwendet keine Tracking- oder Analyse-Tools.</li>
+                </ul>
+            </div>
+
+            <div class="datenschutz-section highlight-box">
+                <h3>💼 Empfehlung: Nutzung auf Dienstgeräten</h3>
+                <p>
+                    <strong>Wichtig:</strong> Lehrkräfte sollten DiRueLei ausschließlich auf <strong>schulischen Dienstgeräten</strong> verwenden.
+                </p>
+                <ul>
+                    <li>Private Geräte sollten nicht für die Verarbeitung von Schülerdaten verwendet werden.</li>
+                    <li>Stellen Sie sicher, dass das verwendete Dienstgerät den schulischen IT-Sicherheitsrichtlinien entspricht.</li>
+                    <li>Nach der Nutzung können alle erzeugten Dateien lokal gelöscht werden.</li>
+                </ul>
+            </div>
+
+            <div class="datenschutz-section">
+                <h3>📋 Welche Daten werden verarbeitet?</h3>
+                <p>DiRueLei verarbeitet folgende Daten lokal in Ihrem Browser:</p>
+                <ul>
+                    <li><strong>CSV-Dateien:</strong> Schüler-IDs und Namen aus Mebis-Exporten.</li>
+                    <li><strong>PDF-Dateien:</strong> Gescannte Dokumente mit QR-Codes.</li>
+                    <li><strong>QR-Codes:</strong> Automatisch generierte Identifikationscodes.</li>
+                </ul>
+                <p>
+                    Alle diese Daten bleiben <strong>ausschließlich auf Ihrem Gerät</strong> und werden nicht übertragen.
+                </p>
+            </div>
+
+            <div class="datenschutz-section">
+                <h3>🗑️ Datenlöschung</h3>
+                <p>
+                    Da DiRueLei keine Daten speichert oder überträgt, können Sie jederzeit:
+                </p>
+                <ul>
+                    <li>Den Browser-Tab schließen (alle Daten werden aus dem Arbeitsspeicher entfernt).</li>
+                    <li>Die erzeugten PDF-Dateien lokal von Ihrem Gerät löschen.</li>
+                    <li>Den Browser-Cache leeren, falls gewünscht.</li>
+                </ul>
+            </div>
+
+            <div class="datenschutz-section">
+                <h3>🔐 Technische Sicherheit</h3>
+                <ul>
+                    <li>Moderne Browser-Sicherheitsmechanismen (Cross-Origin Isolation).</li>
+                    <li>Keine Persistierung von Daten über die Sitzung hinaus.</li>
+                    <li>Verwendung von WebAssembly (Pyodide) für sichere Python-Ausführung im Browser.</li>
+                    <li>Keine Netzwerkverbindungen während der Datenverarbeitung (außer initialem Laden der Anwendung).</li>
+                </ul>
+            </div>
+
+            <div class="datenschutz-section">
+                <h3>📞 Kontakt</h3>
+                <p>
+                    Bei Fragen zum Datenschutz wenden Sie sich bitte an Ihren schulischen Datenschutzbeauftragten 
+                    oder an die IT-Verantwortlichen Ihrer Schule. (Sorry Johann, das hat die KI geschrieben.)
+                </p>
+                <p>
+                    <strong>Entwickler:</strong> Hannes Funk<br>
+                    <strong>Version:</strong> 2.0.0 (2025)
+                </p>
+            </div>
+
+            <div class="datenschutz-section">
+                <h3>⚖️ Rechtliche Grundlagen</h3>
+                <p>
+                    Die Verarbeitung von Schülerdaten unterliegt den Bestimmungen der DSGVO und den jeweiligen 
+                    Landesdatenschutzgesetzen. Die vollständige Offline-Verarbeitung von DiRueLei minimiert 
+                    datenschutzrechtliche Risiken erheblich.
+                </p>
+                <p>
+                    <strong>Hinweis:</strong> Diese Anwendung ist ein Werkzeug zur Unterstützung von Lehrkräften. 
+                    Die Verantwortung für die datenschutzkonforme Verwendung liegt bei der nutzenden Lehrkraft 
+                    bzw. der Schule.
+                </p>
+            </div>
+        </div>
+
+        <div class="button-group">
+            <button class="btn" onclick="window.close();">Fenster schließen</button>
+            <button class="btn btn-secondary" onclick="window.location.href='index.html';">Zurück zur Anwendung</button>
+        </div>
+    </div>
+</body>
+</html>
