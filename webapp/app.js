@@ -4,8 +4,6 @@ class DiRueLeiApp {
     constructor() {
         this.loadingElement = document.getElementById('loading');
         this.mainAppElement = document.getElementById('main-app');
-        this.progressBar = document.getElementById('progress-bar');
-        this.loadingStatus = document.getElementById('loading-status');
         
         // Application state
         this.pdfFiles = [];
@@ -16,44 +14,20 @@ class DiRueLeiApp {
         // Web Worker for all Python operations
         this.scanWorker = null;
         this.workerInitialized = false;
-        
-        // Simple progress tracking
-        this.totalSteps = 2;
-        this.currentStep = 0;
-    }
-    
-    updateProgress(message) {
-        this.currentStep++;
-        const percentage = (this.currentStep / this.totalSteps) * 100;
-        this.progressBar.style.width = percentage + '%';
-        this.loadingStatus.textContent = message;
-        console.log(`Progress: ${percentage.toFixed(1)}% - ${message}`);
     }
     
     async init() {
         try {
-            this.updateProgress('Initialisiere Anwendung...');
-            
-            // Set up event listeners
             this.setupEventListeners();
-            
-            this.updateProgress('Starte Web Worker...');
-            
-            // Initialize the scan worker (this loads Pyodide in background)
             this.initializeScanWorker();
             
-            // Hide loading screen and show main app immediately
-            this.loadingElement.style.display = 'none';
-            this.mainAppElement.classList.remove('hidden');
-            
-            this.showStatus('Anwendung geladen! Python-Umgebung wird im Hintergrund initialisiert...', 'success', 3000);
+            this.showStatus('Anwendung geladen! Python-Umgebung wird im Hintergrund initialisiert...', 'init-progress');
             
         } catch (error) {
             console.error('Anwendung konnte nicht initialisiert werden.', error);
             this.showStatus(`Anwendung konnte nicht geladen werden. Fehlermeldung: ${error.message}`, 'error');
         }
     }
-    
 
     initializeScanWorker() {
         if (this.scanWorker) {
@@ -69,10 +43,9 @@ class DiRueLeiApp {
         
         this.scanWorker.onerror = (error) => {
             console.error('Worker error:', error);
-            this.showStatus(`Worker error: ${error.message}`, 'error');
+            this.showStatus(`Worker-Fehler: ${error.message}`, 'error');
         };
         
-        this.showStatus('Initializiere Anwendung...', 'info');
         this.scanWorker.postMessage({ type: 'INIT' });
     }
     
@@ -100,12 +73,12 @@ class DiRueLeiApp {
                 this.updateScanProgress(data.percentage);
                 break;
                 
+            case 'SCAN_LOG':
+                this.handleScanLog(data.message, data.level);
+                // fall-through
+
             case 'LOG':
                 console.log(data.message);
-                // fall-through
-        
-            case 'SCAN_LOG':
-                this.handleWorkerLog(data.message, data.level);
                 break;
                 
             case 'QR_COMPLETE':
@@ -136,7 +109,7 @@ class DiRueLeiApp {
         }
     }
     
-    handleWorkerLog(message, level) {
+    handleScanLog(message, level) {
         // Add log message to the output area
         const outputDiv = document.getElementById('scan-output');
         if (outputDiv) {
@@ -151,33 +124,28 @@ class DiRueLeiApp {
     
     handleScanComplete(data) {
         try {
-            // Download the ZIP file
             this.downloadFile(data.zipBytes, 'scan-results.zip', 'application/zip');
             
-            // Setup summary download button
             const summaryElement = document.getElementById("download-results-btn");
             if (summaryElement) {
-                // Remove old listeners by cloning the element
                 const newSummaryElement = summaryElement.cloneNode(true);
                 summaryElement.parentNode.replaceChild(newSummaryElement, summaryElement);
                 
-                // Store summary bytes for download
                 this.summaryBytes = data.summaryBytes;
                 
                 newSummaryElement.addEventListener('click', () => {
-                    this.downloadFile(this.summaryBytes, 'Zusammenfassung.pdf', 'application/pdf');
+                    this.openPdfInNewTab(this.summaryBytes, 'Zusammenfassung.pdf');
                 });
             }
             
-            this.showStatus('PDF scan completed successfully!', 'success');
+            this.showStatus('PDF Scan erfolgreich!', 'success');
         } catch (error) {
-            this.showStatus(`Error handling scan results: ${error.message}`, 'error');
+            this.showStatus(`Fehler: ${error.message}`, 'error');
         }
     }
     
     handleQRComplete(data) {
         try {
-            // Download the generated QR PDF
             this.downloadFile(data.pdfBytes, data.filename, 'application/pdf');
             this.showStatus('QR-Codes erfolgreich erzeugt!', 'success');
         } catch (error) {
@@ -196,7 +164,6 @@ class DiRueLeiApp {
             {'id': 'checkbox-use-offset', 'func': this.toggleOffset, 'event': 'change'},
             {'id': 'checkbox-select-students', 'func': this.toggleSelectStudents, 'event': 'change'},
             {'id': 'select-all', 'func': this.toggleSelectAll, 'event': 'change'}
-            
         ];
 
         for (const listener of listeners) {
@@ -548,12 +515,10 @@ class DiRueLeiApp {
             fileInput.value = '';
         }
         
-        // Hide the clear button
         const clearBtn = document.getElementById('clear-pdf-files-btn');
         if (clearBtn) {
             clearBtn.classList.add('hidden');
         }
-        
         this.showStatus('Alle PDF-Dateien entfernt', 'info');
     }
     
@@ -563,15 +528,13 @@ class DiRueLeiApp {
             return;
         }
         
-        // Initialize worker if not already done
         if (!this.scanWorker) {
             this.initializeScanWorker();
         }
         
-        // Wait for worker to be ready
         if (!this.workerInitialized) {
             this.showStatus('Warten auf Worker-Initialisierung...', 'info');
-            // Set up a listener to start scan when worker is ready
+            
             const originalHandler = this.handleWorkerMessage.bind(this);
             this.handleWorkerMessage = (data) => {
                 originalHandler(data);
@@ -582,53 +545,39 @@ class DiRueLeiApp {
             return;
         }
         
-        this.showStatus('Scanne PDF...', 'info');
-        
         try {
-            // Reset progress bar
             const progressBar = document.getElementById('scan-progress-bar');
             if (progressBar) {
+                progressBar.classList.remove("hidden");
                 progressBar.style.width = '0%';
                 progressBar.textContent = '0%';
                 progressBar.setAttribute('aria-valuenow', 0);
             }
             
-            // Clear output area
             const outputDiv = document.getElementById('scan-output');
             if (outputDiv) {
                 outputDiv.innerHTML = '';
+                outputDiv.classList.remove("hidden");
             }
             
-            // Get scan options
             const scanOptions = {
                 twoPageScan: document.getElementById('two-page-scan')?.checked || false,
                 splitA3: document.getElementById('split-a3')?.checked || false,
                 quickAndDirty: document.getElementById('quick-and-dirty')?.checked || false
             };
             
-            // Prepare PDF files for transfer to worker
-            // Use Transferable objects for efficiency (transfers ownership, no copy)
-            const transferList = [];
-            const pdfFilesForWorker = this.pdfFiles.map(file => {
-                const buffer = file.data.buffer;
-                transferList.push(buffer);
-                return {
-                    name: file.name,
-                    data: file.data
-                };
-            });
+            const pdfFilesForWorker = this.pdfFiles.map(file => ({
+                name: file.name,
+                data: new Uint8Array(file.data) // Create a copy
+            }));
             
-            // Send scan request to worker
             this.scanWorker.postMessage({
                 type: 'SCAN_START',
                 data: {
                     pdfFiles: pdfFilesForWorker,
                     options: scanOptions
                 }
-            }, transferList);
-            
-            // Note: After transfer, this.pdfFiles data will be empty (transferred to worker)
-            // We'll need to reload if user wants to scan again
+            });
             
         } catch (error) {
             this.showStatus(`Fehler beim Scannen der PDFs: ${error.message}`, 'error');
@@ -667,6 +616,22 @@ class DiRueLeiApp {
         URL.revokeObjectURL(url);
     }
     
+    openPdfInNewTab(data, filename) {
+        const blob = new Blob([data], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const newWindow = window.open(url, '_blank');
+        
+        if (newWindow) {
+            setTimeout(() => {
+                URL.revokeObjectURL(url);
+            }, 1000);
+        } else {
+            this.showStatus('Popup blocked! Downloading PDF instead...', 'warning');
+            this.downloadFile(data, filename, 'application/pdf');
+            URL.revokeObjectURL(url);
+        }
+    }
+    
     showStatus(message, type = 'info', duration = 10000) {
         console.log(`${type.toUpperCase()}: ${message}`);
 
@@ -676,7 +641,6 @@ class DiRueLeiApp {
             return;
         }
         
-        // Create or get the status container
         let statusContainer = document.getElementById('status-container');
         if (!statusContainer) {
             statusContainer = document.createElement('div');
@@ -684,12 +648,10 @@ class DiRueLeiApp {
             document.body.appendChild(statusContainer);
         }
         
-        // Create the new status message
         const statusDiv = document.createElement('div');
         statusDiv.className = `status-message ${type}`;
         statusDiv.textContent = message;
         
-        // Add close button
         const closeBtn = document.createElement('span');
         closeBtn.innerHTML = '×';
         closeBtn.classList.add('close-btn');
@@ -700,21 +662,17 @@ class DiRueLeiApp {
         
         statusDiv.appendChild(closeBtn);
         
-        // Add click to dismiss
         statusDiv.addEventListener('click', () => {
             this.removeStatusMessage(statusDiv);
         });
         
-        // Add to container (at the bottom)
         statusContainer.appendChild(statusDiv);
         
-        // Animate in
         setTimeout(() => {
             statusDiv.style.transform = 'translateX(0)';
             statusDiv.style.opacity = '1';
         }, 50);
         
-        // Auto-remove after specified duration (if duration > 0)
         if (duration > 0 && type != "init-progress") {
             setTimeout(() => {
                 this.removeStatusMessage(statusDiv);
@@ -797,10 +755,11 @@ function showMainPage() {
     if (scanPage) {
         scanPage.classList.add('hidden');
         document.getElementById("pdf-files").files = null;
-        const outputDiv = document.getElementById("output-area")
+        const outputDiv = document.getElementById("scan-output")
         while (outputDiv.firstChild) {
             outputDiv.firstChild.remove();
         }
+        updateScanProgress(0);
     }
 }
 

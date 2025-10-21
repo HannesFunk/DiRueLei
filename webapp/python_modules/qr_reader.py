@@ -126,7 +126,7 @@ class ExamReader :
         self.zip_data = zip_buffer.getvalue()
         
         self.logMsg("ZIP file created in memory", "info")
-        self.logMsg(f"Done. Created output for {len(self.student_page_map)} students.", "info")
+        self.logMsg(f"Done. Created output for {len(self.student_page_map)} students.", "success")
         # 1. Alert user if there are missing pages
         if hasattr(self, 'missing_pages') and self.missing_pages:
             warning_msg = f"Achtung: {len(self.missing_pages)} Seite(n) konnten keinem Schüler zugeordnet werden: {[p+1 for p in self.missing_pages]}. Bitte Zusammenfassung prüfen."

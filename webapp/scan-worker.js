@@ -200,32 +200,29 @@ async function handleScan(data) {
         // Create progress callback that sends messages back to main thread
         pyodide.runPython(`
 import js
+from pyodide.ffi import to_js
 
 def progress_callback(percentage):
-    js.postMessage({
+    js.postMessage(to_js({
         'type': 'SCAN_PROGRESS',
-        'percentage': percentage
-    })
+        'percentage': float(percentage)
+    }, dict_converter=js.Object.fromEntries))
 
 def log_callback(message, level='info'):
-    js.postMessage({
+    js.postMessage(to_js({
         'type': 'SCAN_LOG',
-        'message': message,
-        'level': level
-    })
+        'message': str(message),
+        'level': str(level)
+    }, dict_converter=js.Object.fromEntries))
         `);
         
         const progressCallback = pyodide.globals.get('progress_callback');
         const logCallback = pyodide.globals.get('log_callback');
         
-        // Convert JS objects to Python format
         const pdfFilesForPython = pdfFiles.map(file => ({
             name: file.name,
             data: file.data
         }));
-        
-        // Create ExamReader instance
-        postMessage({ type: 'SCAN_LOG', message: 'Initializing ExamReader...', level: 'info' });
         
         const examReader = ExamReader(pdfFilesForPython, {
             two_page_scan: options.twoPageScan || false,
@@ -233,11 +230,9 @@ def log_callback(message, level='info'):
             quick_and_dirty: options.quickAndDirty || false
         });
         
-        // Set callbacks
         examReader.progress_callback = progressCallback;
         examReader.log_callback = logCallback;
         
-        // Process the PDFs
         postMessage({ type: 'SCAN_LOG', message: 'Processing PDFs...', level: 'info' });
         const success = await examReader.process();
         

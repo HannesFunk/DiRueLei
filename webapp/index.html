@@ -13,17 +13,8 @@
     <div class="container">
         <h1>DiRueLei</h1>
         
-        <!-- Loading Screen -->
-        <div id="loading" class="loading">
-            <p>Loading Pyodide and Python modules...</p>
-            <div class="progress">
-                <div id="progress-bar" class="progress-bar"></div>
-            </div>
-            <p id="loading-status">Initializing...</p>
-        </div>
-        
         <!-- Main Application -->
-        <div id="main-app" class="hidden">
+        <div id="main-app">
             
             <!-- Main Page -->
             <div id="main-page">
@@ -186,24 +177,24 @@
 
                     <div class="checkbox-group">
                         <label>
-                            <input type="checkbox" id="quick-and-dirty"> 
+                            <input type="checkbox" id="quick-and-dirty" checked> 
                             Quick and dirty
                         </label>
                         <div class="checkbox-explanation">
                             Das bedeutet: Auf der Folgeseite einer Seite mit QR-Code wird nur oberflächlich nach einem neuen Code gesucht.
                         </div>
                     </div>
-
-                    <div class="progress">
-                        <div id="scan-progress-bar" class="progress-bar"></div>
-                    </div>
-
-                    <div class="output-area" id="scan-output"></div>
                 </div>
+
+                <div class="progress">
+                    <div id="scan-progress-bar" class="progress-bar hidden"></div>
+                </div>
+
+                <div class="output-area hidden" id="scan-output"></div>
 
                 <div class="button-group">
                     <button class="btn btn-secondary" onclick="showMainPage()">Zurück zur Hauptseite</button>
-                    <button class="btn btn-secondary" id="download-results-btn">Zusammenfassung herunterladen</button>
+                    <button class="btn btn-secondary" id="download-results-btn">Zusammenfassung  öffnen</button>
                     <button class="btn" id="process-pdf-btn">PDFs einlesen</button>
                 </div>
             </div>
