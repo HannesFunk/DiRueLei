@@ -9,39 +9,15 @@ from reportlab.lib.units import cm
 from reportlab.lib.utils import ImageReader
 
 class QRGenerator:
-    def __init__(self, csv_content, file_name):
-        students = []
-        csv_reader = csv.DictReader(io.StringIO(csv_content), delimiter=',')
-        string_id = csv_reader.fieldnames[0]
-        string_name = csv_reader.fieldnames[1]
+    def __init__(self, students):
+        if (hasattr(students, "to_py")) :
+            self.students = self.sort_students(students.to_py())
+        else :
+            self.students = self.sort_students(students)
 
-        for row in csv_reader:
-            row[string_id] = row[string_id].replace("Teilnehmer/in", "")
-            students.append({
-                'id': row[string_id],
-                'name': row[string_name]
-            })
-
-        self.students = self.sort_students(students)
-        self.class_name = self._guess_class_from_filename(file_name)
-    
     def get_students(self):
         return self.students
     
-    def set_students(self, students_list):
-        """Set a filtered list of students for PDF generation"""
-        self.students = students_list
-    
-    def get_filename(self):
-        return "QR-Codes" + self.class_name + ".pdf"
-
-    def _guess_class_from_filename(self, file_name) :
-        class_string = re.search(r"_\d{1,2}[a-z]_", file_name)
-        if class_string == None :
-            return ""
-        else :
-            return "_" + class_string.group().replace("_", "")
-
     def create_qr_image(self, id, name):
         qr = qrcode.QRCode(version=1, box_size=10, border=2)
         qr.add_data(name + "_" + id)

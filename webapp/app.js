@@ -7,9 +7,8 @@ class DiRueLeiApp {
         
         // Application state
         this.pdfFiles = [];
-        this.csvContent = null;
-        this.csvFilename = null;
         this.allStudents = [];
+        this.className = "";
         
         // Web Worker for all Python operations
         this.scanWorker = null;
@@ -145,8 +144,9 @@ class DiRueLeiApp {
     }
     
     handleQRComplete(data) {
+        const filename = `QR-Codes${this.className}.pdf`;
         try {
-            this.downloadFile(data.pdfBytes, data.filename, 'application/pdf');
+            this.downloadFile(data.pdfBytes, filename, 'application/pdf');
             this.showStatus('QR-Codes erfolgreich erzeugt!', 'success');
         } catch (error) {
             this.showStatus(`Fehler beim Verarbeiten der QR-Codes: ${error.message}`, 'error');
@@ -323,8 +323,7 @@ class DiRueLeiApp {
         
         try {
             const csvData = await this.readFileAsText(file);
-            this.csvContent = csvData;
-            this.csvFilename = file.name;
+            this.className = this.guessClassFromFilename(file.name);
             this.allStudents = this.parseCSV(csvData);
             
             document.getElementById('generate-qr-btn').disabled = false;
@@ -392,12 +391,6 @@ class DiRueLeiApp {
     }
     
     async generateQRPdf() {
-        if (!this.csvContent) {
-            this.showStatus('Noch keine CSV-Datei ausgewählt.', 'error');
-            return;
-        }
-        
-        // Initialize worker if not already done
         if (!this.scanWorker) {
             this.initializeScanWorker();
         }
@@ -419,7 +412,6 @@ class DiRueLeiApp {
             this.showStatus('Erzeuge PDF mit QR-Codes...', 'info');
             
             const selectedStudents = this.getSelectedStudents();
-            
             if (selectedStudents.length === 0) {
                 this.showStatus('Bitte wählen Sie mindestens einen Schüler aus', 'error');
                 return;
@@ -433,12 +425,10 @@ class DiRueLeiApp {
             this.scanWorker.postMessage({
                 type: 'GENERATE_QR',
                 data: {
-                    csvContent: this.csvContent,
                     copies: copies,
                     offsetRow: offsetRow,
                     offsetCol: offsetCol,
                     selectedStudents: selectedStudents,
-                    csvFilename: this.csvFilename
                 }
             });
             
@@ -520,6 +510,17 @@ class DiRueLeiApp {
             clearBtn.classList.add('hidden');
         }
         this.showStatus('Alle PDF-Dateien entfernt', 'info');
+    }
+
+    guessClassFromFilename(fileName) {
+        const classPattern = /_\d{1,2}[a-z]_/;
+        const match = fileName.match(classPattern);
+        
+        if (match === null) {
+            return "";
+        } else {
+            return "_" + match[0].replace(/_/g, "");
+        }
     }
     
     async startPdfScan() {

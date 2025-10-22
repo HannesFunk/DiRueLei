@@ -126,54 +126,35 @@ self.onmessage = async function(event) {
     }
 };
 
-// Handle QR code generation
 async function handleQRGeneration(data) {
     try {
         if (!isInitialized) {
             await initialize();
         }
         
-        const { csvContent, copies, offsetRow, offsetCol, selectedStudents, csvFilename } = data;
+        const {copies, offsetRow, offsetCol, selectedStudents } = data;
         
         postMessage({ type: 'LOG', message: 'Generating QR codes...', level: 'info' });
         
-        // Get the QRGenerator class
+        // const pyStudents = pyodide.toPy(selectedStudents);
         const QRGenerator = pyodide.globals.get('QRGenerator');
-        
-        // Create QRGenerator instance with CSV content
-        const qrGenerator = QRGenerator(csvContent, csvFilename);
-        
-        // Set selected students if provided
-        if (selectedStudents && selectedStudents.length > 0) {
-            // Convert JavaScript array to Python list
-            // The students are JavaScript objects, so we need to convert them properly
-            const pyStudents = pyodide.toPy(selectedStudents);
-            qrGenerator.set_students(pyStudents);
-            pyStudents.destroy(); // Clean up the converted object
-        }
+        const qrGenerator = QRGenerator(selectedStudents);
+        // pyStudents.destroy(); 
         
         postMessage({ type: 'LOG', message: `Generating ${copies} copy/copies with offset (${offsetRow}, ${offsetCol})...`, level: 'info' });
         
-        // Generate the PDF
         const pdfBytesProxy = qrGenerator.generate_qr_pdf_bytes(copies, offsetRow, offsetCol);
         
-        // Convert to JavaScript Uint8Array
         const pdfBytes = new Uint8Array(pdfBytesProxy.toJs());
         pdfBytesProxy.destroy();
         
-        // Get filename
-        const filename = qrGenerator.get_filename();
-        
-        // Send result back (transfer ownership for efficiency)
         postMessage({
             type: 'QR_COMPLETE',
             pdfBytes: pdfBytes,
-            filename: filename
         }, [pdfBytes.buffer]);
         
         postMessage({ type: 'LOG', message: 'QR codes generated successfully!', level: 'success' });
         
-        // Cleanup
         qrGenerator.destroy();
         QRGenerator.destroy();
         
