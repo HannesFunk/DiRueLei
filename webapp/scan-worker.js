@@ -36,7 +36,8 @@ async function initialize() {
             'qrcode',
             'numpy'
         ];        
-        
+         
+        const version = "211";
         const modules = [
             { name: 'qr_reader.py', path: './python_modules/qr_reader.py' },
             { name: 'qr_generator.py', path: './python_modules/qr_generator.py' }
@@ -136,10 +137,8 @@ async function handleQRGeneration(data) {
         
         postMessage({ type: 'LOG', message: 'Generating QR codes...', level: 'info' });
         
-        // const pyStudents = pyodide.toPy(selectedStudents);
         const QRGenerator = pyodide.globals.get('QRGenerator');
         const qrGenerator = QRGenerator(selectedStudents);
-        // pyStudents.destroy(); 
         
         postMessage({ type: 'LOG', message: `Generating ${copies} copy/copies with offset (${offsetRow}, ${offsetCol})...`, level: 'info' });
         
@@ -166,7 +165,6 @@ async function handleQRGeneration(data) {
     }
 }
 
-// Handle the PDF scanning process
 async function handleScan(data) {
     try {
         if (!isInitialized) {
@@ -219,19 +217,15 @@ def log_callback(message, level='info'):
         if (success) {
             postMessage({ type: 'SCAN_LOG', message: 'Scan completed, preparing results...', level: 'success' });
             
-            // Get the ZIP and summary bytes
             const zipBytesProxy = examReader.get_zip_bytes();
             const summaryBytesProxy = examReader.get_summary_bytes();
             
-            // Convert to JavaScript Uint8Array
             const zipBytes = new Uint8Array(zipBytesProxy.toJs());
             const summaryBytes = new Uint8Array(summaryBytesProxy.toJs());
             
-            // Clean up proxies
             zipBytesProxy.destroy();
             summaryBytesProxy.destroy();
             
-            // Send results back to main thread (transfer ownership for efficiency)
             postMessage({
                 type: 'SCAN_COMPLETE',
                 zipBytes: zipBytes,

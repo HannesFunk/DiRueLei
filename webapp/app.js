@@ -34,7 +34,7 @@ class DiRueLeiApp {
         }
         
         console.log('Initializing scan worker...');
-        this.scanWorker = new Worker('scan-worker.js');
+        this.scanWorker = new Worker('scan-worker.js?v=210');
         
         this.scanWorker.onmessage = (event) => {
             this.handleWorkerMessage(event.data);
@@ -633,7 +633,7 @@ class DiRueLeiApp {
         }
     }
     
-    showStatus(message, type = 'info', duration = 10000) {
+    showStatus(message, type = 'info', duration = 7000) {
         console.log(`${type.toUpperCase()}: ${message}`);
 
         const initStatus = document.getElementsByClassName("init-progress")[0];
@@ -651,7 +651,39 @@ class DiRueLeiApp {
         
         const statusDiv = document.createElement('div');
         statusDiv.className = `status-message ${type}`;
-        statusDiv.textContent = message;
+        
+        const messageSpan = document.createElement('span');
+        messageSpan.className = 'status-text';
+        if (message.length > 200) {
+            let tempMessage = message.replaceAll("\n", "");
+            messageSpan.innerText = tempMessage.substring(0,209) + "[...]";
+        } else {
+            messageSpan.innerText = message;
+        }
+        statusDiv.appendChild(messageSpan);
+        
+        if (type === 'error') {
+            duration = 15000;
+
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'copy-btn';
+            copyBtn.innerHTML = '📋';
+            copyBtn.title = 'Fehlermeldung kopieren';
+            copyBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                navigator.clipboard.writeText(message).then(() => {
+                    copyBtn.innerHTML = '✓';
+                    copyBtn.title = 'Kopiert!';
+                    setTimeout(() => {
+                        copyBtn.innerHTML = '📋';
+                        copyBtn.title = 'Fehlermeldung kopieren';
+                    }, 2000);
+                }).catch(err => {
+                    console.error('Failed to copy:', err);
+                });
+            });
+            statusDiv.appendChild(copyBtn);
+        }
         
         const closeBtn = document.createElement('span');
         closeBtn.innerHTML = '×';
@@ -760,7 +792,6 @@ function showMainPage() {
         while (outputDiv.firstChild) {
             outputDiv.firstChild.remove();
         }
-        updateScanProgress(0);
     }
 }
 

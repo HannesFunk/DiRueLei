@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DiRueLei Web App</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=210">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
     <!-- Cross-Origin Isolation Headers for SharedArrayBuffer support -->
     <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin">
     <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp">
@@ -202,7 +203,8 @@
     <!-- Footer with Version -->
     <footer class="footer">
         <div class="footer-content">
-            <span class="version">DiRueLei v2.0.1</span>
+            DiRueLei
+            <span class="version">v2.1.1</span>
             <span class="upload-time"></span>
             <span class="footer-separator">•</span>
             <span class="author">(c) Hannes Funk, 2025</span>
@@ -212,6 +214,6 @@
     </footer>
 
     <!-- Pyodide is now loaded only in the Web Worker -->
-    <script src="app.js"></script>
+    <script src="app.js?v=211"></script>
 </body>
 </html>
