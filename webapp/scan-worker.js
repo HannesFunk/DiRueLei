@@ -39,7 +39,6 @@ async function initialize() {
         
         const modules = [
             { name: 'qr_reader.py', path: './python_modules/qr_reader.py' },
-            { name: 'pdf_manager.py', path: './python_modules/pdf_manager.py' },
             { name: 'qr_generator.py', path: './python_modules/qr_generator.py' }
         ];
         
