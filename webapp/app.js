@@ -34,7 +34,7 @@ class DiRueLeiApp {
         }
         
         console.log('Initializing scan worker...');
-        this.scanWorker = new Worker('scan-worker.js?v=210');
+        this.scanWorker = new Worker('scan-worker.js?v=212');
         
         this.scanWorker.onmessage = (event) => {
             this.handleWorkerMessage(event.data);

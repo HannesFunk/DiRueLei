@@ -37,10 +37,10 @@ async function initialize() {
             'numpy'
         ];        
          
-        const version = "211";
+        const version = "212";
         const modules = [
-            { name: 'qr_reader.py', path: './python_modules/qr_reader.py' },
-            { name: 'qr_generator.py', path: './python_modules/qr_generator.py' }
+            { name: 'qr_reader.py', path: './python_modules/qr_reader.py?v=' + version},
+            { name: 'qr_generator.py', path: './python_modules/qr_generator.py?v=' + version }
         ];
         
         const totalSteps = 1 + packages.length + modules.length;
