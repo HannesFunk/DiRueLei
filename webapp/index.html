@@ -4,11 +4,17 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DiRueLei Web App</title>
-    <link rel="stylesheet" href="style.css?v=210">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <!-- Cross-Origin Isolation Headers for SharedArrayBuffer support -->
     <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin">
     <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp">
+    <script>
+        const APP_VERSION = "2.1.2";
+        const APP_VERSION_NUM = APP_VERSION.replaceAll(".", "");
+        document.write(`<script src="app.js?v=${APP_VERSION_NUM}"><\/script>`);
+        document.write(`<link rel="stylesheet" href="style.css?v=${APP_VERSION_NUM}">`);
+            
+    </script>
 </head>
 <body>
     <div class="container">
@@ -200,7 +206,6 @@
         </div>
     </div>
 
-    <!-- Footer with Version -->
     <footer class="footer">
         <div class="footer-content">
             DiRueLei
@@ -213,7 +218,5 @@
         </div>
     </footer>
 
-    <!-- Pyodide is now loaded only in the Web Worker -->
-    <script src="app.js?v=212"></script>
 </body>
 </html>

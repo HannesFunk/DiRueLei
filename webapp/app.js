@@ -17,6 +17,7 @@ class DiRueLeiApp {
     
     async init() {
         try {
+            document.querySelector('.version').textContent = `v${APP_VERSION}`;
             this.setupEventListeners();
             this.initializeScanWorker();
             
@@ -34,7 +35,7 @@ class DiRueLeiApp {
         }
         
         console.log('Initializing scan worker...');
-        this.scanWorker = new Worker('scan-worker.js?v=212');
+        this.scanWorker = new Worker('scan-worker.js?v=' + APP_VERSION_NUM);
         
         this.scanWorker.onmessage = (event) => {
             this.handleWorkerMessage(event.data);

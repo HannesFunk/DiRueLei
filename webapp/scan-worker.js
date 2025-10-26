@@ -1,32 +1,27 @@
-// scan-worker.js - Web Worker for PDF scanning with Pyodide
-// This runs in a separate thread to keep the UI responsive
-
-// Import Pyodide from CDN
 importScripts('https://cdn.jsdelivr.net/pyodide/v0.28.3/full/pyodide.js');
 
 let pyodide = null;
 let ExamReader = null;
 let isInitialized = false;
 
-// Initialize Pyodide and load Python modules
 async function initialize() {
     if (isInitialized) return;
-    
+
     try {
+        const params = new URLSearchParams(self.location.search);
+        const version = params.get('v');
+        
         postMessage({ type: 'LOG', message: 'Loading Pyodide in worker...', level: 'info' });
         
-        // Load Pyodide
         pyodide = await loadPyodide({
             indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.28.3/full/'
         });
         
         postMessage({ type: 'INIT_PROGRESS', package: 'Pyodide', current: 1, total: 'n'});
         
-        // Install required packages
         await pyodide.loadPackage(['micropip']);
         const micropip = pyodide.pyimport('micropip');
         
-        // Install packages one by one with progress updates
         const packages = [
             'Pillow',
             'reportlab', 
@@ -37,7 +32,6 @@ async function initialize() {
             'numpy'
         ];        
          
-        const version = "212";
         const modules = [
             { name: 'qr_reader.py', path: './python_modules/qr_reader.py?v=' + version},
             { name: 'qr_generator.py', path: './python_modules/qr_generator.py?v=' + version }
@@ -58,9 +52,6 @@ async function initialize() {
         }
         
         postMessage({ type: 'LOG', message: 'Loading Python modules...', level: 'info' });
-        
-        // Load Python module files
-
         
         for (const module of modules) {
             try {
@@ -84,7 +75,6 @@ async function initialize() {
             }
         }
         
-        // Get the ExamReader class
         ExamReader = pyodide.globals.get('ExamReader');
         
         isInitialized = true;
