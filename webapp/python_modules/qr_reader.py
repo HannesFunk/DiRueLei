@@ -125,7 +125,6 @@ class ExamReader :
         zip_buffer.seek(0)
         self.zip_data = zip_buffer.getvalue()
         
-        self.logMsg("ZIP file created in memory", "info")
         self.logMsg(f"Done. Created output for {len(self.student_page_map)} students.", "success")
         # 1. Alert user if there are missing pages
         if hasattr(self, 'missing_pages') and self.missing_pages:
@@ -223,7 +222,6 @@ class ExamReader :
         
         # Store in in_memory_files for ZIP creation
         self.in_memory_files["summary.pdf"] = summary_data
-        self.logMsg("Summary PDF created in memory", "info")
         return summary_data
         
     
