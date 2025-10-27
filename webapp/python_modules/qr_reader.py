@@ -145,13 +145,13 @@ class ExamReader :
         self.fitz_source_pdf.close()
         self.in_memory_files.clear()
             
-    async def _extract_qr_code_from_page (self, page_number):
+    async def _extract_qr_code_from_page (self, page_number : int, dirty : bool):
         img_cv = self._open_page_cv(page_number)
         detector = cv2.QRCodeDetector()
         (h,w) = img_cv.shape[:2]
         center = (w//2, h//2)
 
-        if getattr(self, 'quick_and_dirty', False):
+        if dirty :
             angles = [0]
         else:
             angles = [0] + [i for i in range(-15, 16) if i != 0]
@@ -179,7 +179,6 @@ class ExamReader :
         img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
         return cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR) 
         
-    
     def get_summary_bytes(self) -> bytes:
         return self.summary_data
     
@@ -330,7 +329,9 @@ class ExamReader :
 
         for page_num in range (total_pages) : 
             size = pdf_manager.detect_page_size(self.fitz_source_pdf[page_num])
-            (qr, side) = await self._extract_qr_code_from_page(page_num)
+            dirty = self.quick_and_dirty and (self.two_page_scan and last_qr)
+            (qr, side) = await self._extract_qr_code_from_page(page_num, dirty)
+            
             if qr:
                 page_info = {"page_num": page_num, "size": size, "status": "read", "value": qr, "side": side}
                 pages_info.append(page_info)

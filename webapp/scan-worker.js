@@ -155,6 +155,16 @@ async function handleQRGeneration(data) {
     }
 }
 
+function formatTime(ms) {
+    if (ms < 1000) 
+        return `${ms.toFixed(0)}ms`;
+    if (ms < 60000) 
+        return `${(ms / 1000).toFixed(1)}s`;
+    const minutes = Math.floor(ms / 60000);
+    const seconds = ((ms % 60000) / 1000).toFixed(1);
+    return `${minutes}m ${seconds}s`;
+}
+
 async function handleScan(data) {
     try {
         if (!isInitialized) {
@@ -201,7 +211,7 @@ def log_callback(message, level='info'):
         examReader.progress_callback = progressCallback;
         examReader.log_callback = logCallback;
         
-        postMessage({ type: 'SCAN_LOG', message: 'Processing PDFs...', level: 'info' });
+        const start = performance.now();
         const success = await examReader.process();
         
         if (success) {
@@ -222,13 +232,13 @@ def log_callback(message, level='info'):
                 summaryBytes: summaryBytes
             }, [zipBytes.buffer, summaryBytes.buffer]);
             
-            postMessage({ type: 'SCAN_LOG', message: 'Results sent to main thread', level: 'success' });
+            const end = performance.now();
+            postMessage({ type: 'SCAN_LOG', message: `Results downloaded. Completed in ${this.formatTime(end-start)}`, level: 'success' });
             
         } else {
-            postMessage({ type: 'ERROR', message: 'PDF scan failed' });
+            postMessage({ type: 'ERROR', message: 'PDF scan failed!' });
         }
         
-        // Clean up
         examReader.close();
         progressCallback.destroy();
         logCallback.destroy();
