@@ -325,7 +325,17 @@ class DiRueLeiApp {
         try {
             const csvData = await this.readFileAsText(file);
             this.className = this.guessClassFromFilename(file.name);
-            this.allStudents = this.parseCSV(csvData);
+            let students = this.parseCSV(csvData);
+            students.sort((a, b) => {
+                const getLastName = (student) => {
+                    const parts = student.name.split(' ');
+                    return parts[parts.length -1]
+                }
+
+                return getLastName(a).localeCompare(getLastName(b));
+            });
+
+            this.allStudents = students;
             
             document.getElementById('generate-qr-btn').disabled = false;
             document.getElementById('qr-settings').classList.remove('hidden');
@@ -370,7 +380,8 @@ class DiRueLeiApp {
     
     populateStudentCheckboxes(students) {
         const studentCheckboxesContainer = document.getElementById('student-checkboxes');
-        
+
+          
         studentCheckboxesContainer.innerHTML = '';
         
         students.forEach((student, index) => {

@@ -11,9 +11,9 @@ from reportlab.lib.utils import ImageReader
 class QRGenerator:
     def __init__(self, students):
         if (hasattr(students, "to_py")) :
-            self.students = self.sort_students(students.to_py())
+            self.students = students.to_py()
         else :
-            self.students = self.sort_students(students)
+            self.students = students
 
     def get_students(self):
         return self.students
@@ -122,14 +122,6 @@ class QRGenerator:
         except Exception as e:
             print(f"Error generating PDF: {str(e)}")
             raise
-
-    def sort_students(self, students_unsorted):
-        def extract_last_name(student):
-            full_name = student['name']
-            parts = full_name.strip().split()
-            return parts[1] if len(parts) >= 2 else parts[0]
-        
-        return sorted(students_unsorted, key=extract_last_name)
 
     def _repeat_array(self, array, number_copies=1):
         result = []
