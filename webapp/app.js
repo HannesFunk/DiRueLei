@@ -21,7 +21,7 @@ class DiRueLeiApp {
             this.setupEventListeners();
             this.initializeScanWorker();
             
-            this.showStatus('Anwendung geladen! Python-Umgebung wird im Hintergrund initialisiert...', 'init-progress');
+            this.showStatus('Einiges wird noch im Hintergrund geladen.', 'init-progress');
             
         } catch (error) {
             console.error('Anwendung konnte nicht initialisiert werden.', error);
@@ -58,7 +58,7 @@ class DiRueLeiApp {
             case 'INITIALIZED':
                 this.workerInitialized = true;
                 console.log('Scan worker ready', 'success');
-                this.showStatus('Pakete vollständig geladen.', 'success'); 
+                this.showStatus('Anwendung vollständig geladen.', 'success'); 
                 while (document.getElementsByClassName("init-progress").length > 0) {
                     document.getElementsByClassName("init-progress")[0].remove();
                 }
@@ -157,7 +157,7 @@ class DiRueLeiApp {
     setupEventListeners() {
         const listeners = [
             {'id': 'open-instructions-btn', 'func': this.openInstructions, 'event': 'click'},
-            {'id': 'csv-file', 'func': this.handleCsvFileUpload, 'event': 'change'},
+            {'id': 'csv-files', 'func': this.handleCsvFileUpload, 'event': 'change'},
             {'id': 'generate-qr-btn', 'func': this.generateQRPdf, 'event': 'click'},
             {'id': 'pdf-files', 'func': this.handlePdfFilesUpload, 'event': 'change'},
             {'id': 'clear-pdf-files-btn', 'func': this.clearPdfFiles, 'event': 'click'},
@@ -175,7 +175,7 @@ class DiRueLeiApp {
     
     setupDragAndDrop() {
         const csvDropzone = document.getElementById('csv-dropzone');
-        const csvFileInput = document.getElementById('csv-file');
+        const csvFileInput = document.getElementById('csv-files');
         
         if (csvDropzone && csvFileInput) {
             this.setupDropzone(csvDropzone, csvFileInput, (files) => {
@@ -503,10 +503,12 @@ class DiRueLeiApp {
         }
     }
     
-    clearPdfFiles() {
-        this.pdfFiles = [];
-        const dropzone = document.getElementById('pdf-dropzone');
-        const fileInput = document.getElementById('pdf-files');
+    clearFiles(extension) {
+        if (extension != 'pdf' && extension != 'csv')
+            return;
+
+        const dropzone = document.getElementById(extension + '-dropzone');
+        const fileInput = document.getElementById(extension + '-files');
         
         if (dropzone) {
             dropzone.classList.remove('has-files');
@@ -517,11 +519,14 @@ class DiRueLeiApp {
             fileInput.value = '';
         }
         
-        const clearBtn = document.getElementById('clear-pdf-files-btn');
-        if (clearBtn) {
-            clearBtn.classList.add('hidden');
+        if (extension == 'pdf') {
+            this.pdfFiles = [];
+            document.getElementById('clear-pdf-files-btn')?.classList.add('hidden');
         }
-        this.showStatus('Alle PDF-Dateien entfernt', 'info');
+    }
+
+    clearPdfFiles() {
+        this.clearFiles('pdf');
     }
 
     guessClassFromFilename(fileName) {
@@ -796,10 +801,11 @@ function showMainPage() {
     }
     if (qrPage) {
         qrPage.classList.add('hidden');
+        app.clearFiles('csv');
     }
     if (scanPage) {
         scanPage.classList.add('hidden');
-        document.getElementById("pdf-files").files = null;
+        app.clearFiles('pdf');
         const outputDiv = document.getElementById("scan-output")
         while (outputDiv.firstChild) {
             outputDiv.firstChild.remove();
