@@ -300,14 +300,11 @@ class DiRueLeiApp {
     getSelectedStudents() {
         const selectStudentsCheckbox = document.getElementById('checkbox-select-students');
         
-        // If student selection is not enabled, return all students
         if (!selectStudentsCheckbox.checked) {
             return this.allStudents || [];
         }
         
-        // Filter by selected checkboxes
         const selectedStudents = [];
-        
         const studentCheckboxes = document.querySelectorAll('#student-checkboxes input[type="checkbox"]');
         studentCheckboxes.forEach((checkbox, index) => {
             if (checkbox.checked && index < this.allStudents.length) {
@@ -409,8 +406,7 @@ class DiRueLeiApp {
         
         // Wait for worker to be ready
         if (!this.workerInitialized) {
-            this.showStatus('Warten auf Worker-Initialisierung...', 'info');
-            // Set up a one-time listener to retry when worker is ready
+            this.showStatus('Warten auf vollständiges Laden der Anwendung.', 'info');
             const checkReady = setInterval(() => {
                 if (this.workerInitialized) {
                     clearInterval(checkReady);
@@ -421,11 +417,14 @@ class DiRueLeiApp {
         }
         
         try {
-            this.showStatus('Erzeuge PDF mit QR-Codes...', 'info');
-            
+            if (!this.allStudents || this.allStudents.length === 0) {
+                this.showStatus('Noch keine Schülerdaten erfasst. Bitte zuerst CSV-Datei auswählen.', 'error');
+                return;
+            }
+
             const selectedStudents = this.getSelectedStudents();
             if (selectedStudents.length === 0) {
-                this.showStatus('Bitte wählen Sie mindestens einen Schüler aus', 'error');
+                this.showStatus('Bitte mindestens einen Schüler auswählen.', 'error');
                 return;
             }
             
@@ -433,7 +432,7 @@ class DiRueLeiApp {
             const offsetRow = parseInt(document.getElementById('offset-row').value) || 1;
             const offsetCol = parseInt(document.getElementById('offset-col').value) || 1;
             
-            // Send QR generation request to worker
+            this.showStatus('Erzeuge PDF mit QR-Codes...', 'info');
             this.scanWorker.postMessage({
                 type: 'GENERATE_QR',
                 data: {
@@ -802,6 +801,11 @@ function showMainPage() {
     if (qrPage) {
         qrPage.classList.add('hidden');
         app.clearFiles('csv');
+        const checkBoxes = document.getElementById("student-checkboxes");
+        if (checkBoxes) {
+            checkBoxes.innerHTML = '';
+        }
+        app.allStudents = null;
     }
     if (scanPage) {
         scanPage.classList.add('hidden');
