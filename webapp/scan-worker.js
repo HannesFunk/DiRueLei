@@ -205,7 +205,9 @@ def log_callback(message, level='info'):
         const examReader = ExamReader(pdfFilesForPython, {
             two_page_scan: options.twoPageScan || false,
             split_a3: options.splitA3 || false,
-            quick_and_dirty: options.quickAndDirty || false
+            quick_and_dirty: options.quickAndDirty || false,
+            qr_position_a4: options.qrPositionA4 || 'vorne',
+            qr_position_a3: options.qrPositionA3 || 'aussen'
         });
         
         examReader.progress_callback = progressCallback;

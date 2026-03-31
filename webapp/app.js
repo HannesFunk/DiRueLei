@@ -196,7 +196,7 @@ class DiRueLeiApp {
         }
     }
     
-    setupDropzone(dropzone, fileInput, onFilesSelected) {
+    setupDropzone(dropzone, fileInput, onFilesSelected) {+
         dropzone.addEventListener('click', () => {
             fileInput.click();
         });
@@ -580,7 +580,9 @@ class DiRueLeiApp {
             const scanOptions = {
                 twoPageScan: document.getElementById('two-page-scan')?.checked || false,
                 splitA3: document.getElementById('split-a3')?.checked || false,
-                quickAndDirty: document.getElementById('quick-and-dirty')?.checked || false
+                quickAndDirty: document.getElementById('quick-and-dirty')?.checked || false,
+                qrPositionA4: document.getElementById('qr-position-a4')?.value || 'vorne',
+                qrPositionA3: document.getElementById('qr-position-a3')?.value || 'aussen'
             };
             
             const pdfFilesForWorker = this.pdfFiles.map(file => ({
