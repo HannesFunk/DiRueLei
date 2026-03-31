@@ -179,12 +179,28 @@
                     </div>
 
                     <div class="checkbox-group">
+                        <label for="qr-position-a4">QR-Code Position (A4):</label>
+                        <select id="qr-position-a4">
+                            <option value="vorne" selected>vorne</option>
+                            <option value="hinten">hinten</option>
+                        </select>
+                    </div>
+
+                    <div class="checkbox-group">
+                        <label for="qr-position-a3">QR-Code Position (A3):</label>
+                        <select id="qr-position-a3">
+                            <option value="innen">innen</option>
+                            <option value="aussen" selected>außen</option>
+                        </select>
+                    </div>
+
+                    <div class="checkbox-group">
                         <label>
                             <input type="checkbox" id="split-a3"> 
                             A3-Bögen teilen
                         </label>
                         <div class="checkbox-explanation">
-                            Das bedeutet: A3 Seiten werden in zwei A4 Seiten geteilt. Der QR-Code muss dabei außen angebracht sein.
+                            Das bedeutet: A3 Seiten werden in zwei A4 Seiten geteilt.
                         </div>
                     </div>
 
