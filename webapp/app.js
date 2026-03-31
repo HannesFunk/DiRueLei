@@ -51,10 +51,6 @@ class DiRueLeiApp {
     
     handleWorkerMessage(data) {
         switch (data.type) {
-            case 'READY':
-                console.log('Application loaded.');
-                break;
-                
             case 'INITIALIZED':
                 this.workerInitialized = true;
                 console.log('Scan worker ready', 'success');
@@ -164,7 +160,8 @@ class DiRueLeiApp {
             {'id': 'process-pdf-btn', 'func': this.startPdfScan, 'event': 'click'},
             {'id': 'checkbox-use-offset', 'func': this.toggleOffset, 'event': 'change'},
             {'id': 'checkbox-select-students', 'func': this.toggleSelectStudents, 'event': 'change'},
-            {'id': 'select-all', 'func': this.toggleSelectAll, 'event': 'change'}
+            {'id': 'select-all', 'func': this.toggleSelectAll, 'event': 'change'},
+            {'id': 'two-page-scan', 'func': this.toggleTwoPageScan, 'event': 'change'}
         ];
 
         for (const listener of listeners) {
@@ -285,6 +282,17 @@ class DiRueLeiApp {
             studentSelection.classList.remove('hidden');
         } else {
             studentSelection.classList.add('hidden');
+        }
+    }
+
+    toggleTwoPageScan() {
+        const checkbox = document.getElementById('two-page-scan');
+        const positionSettings = document.getElementById('qr-position-settings');
+        
+        if (checkbox.checked) {
+            positionSettings.classList.remove('hidden');
+        } else {
+            positionSettings.classList.add('hidden');
         }
     }
     
