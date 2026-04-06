@@ -516,7 +516,9 @@ class DiRueLeiApp {
 
         const dropzone = document.getElementById(extension + '-dropzone');
         const fileInput = document.getElementById(extension + '-files');
-        
+        const scanOutput = document.getElementById('scan-output');
+        const progressbar = document.getElementById('scan-progress-bar').parentNode;
+                
         if (dropzone) {
             dropzone.classList.remove('has-files');
             this.resetDropzoneText(dropzone);
@@ -524,6 +526,15 @@ class DiRueLeiApp {
         
         if (fileInput) {
             fileInput.value = '';
+        }
+
+        if (scanOutput) {
+            scanOutput.innerHTML = '';
+            scanOutput.classList.add('hidden');
+        }
+
+        if (progressbar) {
+            progressbar.classList.add('hidden');
         }
         
         if (extension == 'pdf') {
