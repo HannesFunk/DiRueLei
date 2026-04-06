@@ -24,6 +24,8 @@ class ExamReader :
         self.split_a3 = options_dict.get("split_a3", False)
         self.two_page_scan = options_dict.get("two_page_scan", False)
         self.quick_and_dirty = options_dict.get("quick_and_dirty", False)
+        self.qr_position_a4 = options_dict.get("qr_position_a4", "vorne")
+        self.qr_position_a3 = options_dict.get("qr_position_a3", "aussen")
             
         self.pdf_files_data = pdf_files_data
         
@@ -318,44 +320,78 @@ class ExamReader :
         return [num_pages, pdf_data]
             
 
+    def _qr_on_back(self, page_size) :
+        if page_size == "A3" :
+            return self.qr_position_a3 == "innen"
+        else :
+            return self.qr_position_a4 == "hinten"
+
     async def _read_qr_codes(self) :
         pages_info = []
         total_pages = len(self.fitz_source_pdf)
-        last_qr = None
         self.missing_pages = []
         pdf_manager = PdfManager()
 
-        for page_num in range (total_pages) : 
+        # First pass: read all pages and detect QR codes
+        page_data = []
+        for page_num in range(total_pages):
             size = pdf_manager.detect_page_size(self.fitz_source_pdf[page_num])
-            dirty = self.quick_and_dirty and (self.two_page_scan and last_qr)
-            (qr, side) = await self._extract_qr_code_from_page(page_num, dirty)
+            qr_on_back = self._qr_on_back(size)
             
-            if qr:
-                page_info = {"page_num": page_num, "size": size, "status": "read", "value": qr, "side": side}
-                pages_info.append(page_info)
-                last_qr = qr
+            dirty = False
+            if self.quick_and_dirty and self.two_page_scan:
+                dirty = (page_data and page_data[-1].get('qr')) or (qr_on_back and page_num == 0)
+            
+            (qr, side) = await self._extract_qr_code_from_page(page_num, dirty)
+            page_data.append({"page_num": page_num, "size": size, "qr": qr, "side": side, "qr_on_back": qr_on_back})
+            
+            if self.progress_callback:
+                await self.update_progress((page_num + 1) / (total_pages + 1) * 0.8)  # 80% for scanning
 
-            elif self.two_page_scan :
-                if not last_qr :
-                    self.logMsg_async(f"Error on page {page_num+1} of merged PDF: There seem to be two consecutive pages without QR-code or the first page does not have a QR code.", "error")
-                    self.missing_pages.append(page_num)
-                    continue
-                page_info = {"page_num": page_num, "size": size, "status": "from_previous", "value": last_qr, "side": "none"}
-                await self.logMsg_async(f"No QR code on page {page_num+1} of merged PDF. Inferred from previous page.", "info")
-                pages_info.append(page_info)
-                last_qr = None
-
-            else : 
-                await self.logMsg_async(f"Read error: Page {page_num+1} has no QR-Code and option two_page_scan is not active.", "error")
-                self.missing_pages.append(page_num)
-                continue
+        # Second pass: assign pages to students based on QR position settings
+        for i, page in enumerate(page_data):
+            qr_on_back = page["qr_on_back"]
+            
+            if page["qr"]:
+                pages_info.append({
+                    "page_num": page["page_num"], 
+                    "size": page["size"], 
+                    "status": "read", 
+                    "value": page["qr"], 
+                    "side": page["side"]
+                })                   
+            
+            elif self.two_page_scan:
+                if qr_on_back:
+                    if i + 1 < len(page_data) and page_data[i + 1]["qr"]:
+                        next_qr = page_data[i + 1]["qr"]
+                        page_info = {"page_num": page["page_num"], "size": page["size"],
+                                    "status": "from_next", "value": next_qr, "side": "none"}
+                        await self.logMsg_async(f"No QR code on page {page['page_num']+1}. Inferred from next page.", "info")
+                        pages_info.append(page_info)
+                    else:
+                        await self.logMsg_async(f"Error on page {page['page_num']+1}: No QR code found and next page has no QR code either.", "error")
+                        self.missing_pages.append(page["page_num"])
+                else:
+                    if i > 0 and page_data[i - 1]["qr"]:
+                        prev_qr = page_data[i - 1]["qr"]
+                        page_info = {"page_num": page["page_num"], "size": page["size"],
+                                    "status": "from_previous", "value": prev_qr, "side": "none"}
+                        await self.logMsg_async(f"No QR code on page {page['page_num']+1}. Inferred from previous page.", "info")
+                        pages_info.append(page_info)
+                    else:
+                        await self.logMsg_async(f"Error on page {page['page_num']+1}: No QR code and previous page has no QR code either.", "error")
+                        self.missing_pages.append(page["page_num"])
+            else:
+                await self.logMsg_async(f"Read error: Page {page['page_num']+1} has no QR-Code and option two_page_scan is not active.", "error")
+                self.missing_pages.append(page["page_num"])
             
             if self.progress_callback:
                 await self.update_progress((page_num+1)/(total_pages+1))
 
         if len(self.missing_pages) > 0:
             await self.logMsg_async("Some pages could not be assigned: " + str([i+1 for i in self.missing_pages]), "error")
-        else :
+        else:
             await self.logMsg_async("All QR codes read.", "info")
         return pages_info
     
@@ -368,7 +404,6 @@ class ExamReader :
 
             students[page["value"]].append(page)
         return students
-
 
 
 class PdfManager : 

@@ -9,7 +9,7 @@
     <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin">
     <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp">
     <script>
-        const APP_VERSION = "2.1.7";
+        const APP_VERSION = "2.2.1";
         const APP_VERSION_NUM = APP_VERSION.replaceAll(".", "");
         document.write(`<script src="app.js?v=${APP_VERSION_NUM}"><\/script>`);
         document.write(`<link rel="stylesheet" href="style.css?v=${APP_VERSION_NUM}">`);
@@ -169,38 +169,44 @@
                 <div id="scan-settings" class="scan-options hidden">
                     <div class="checkbox-group">
                         <label>
-                            <input type="checkbox" id="two-page-scan"> 
-                            Zweiseitiger Scan
+                            <input type="checkbox" id="two-page-scan" checked> 
+                            Doppelseitiger Scan mit nur einem QR-Code pro Blatt/ Bogen
                         </label>
-                        <div class="checkbox-explanation">
-                            Das bedeutet: Es genügt, dass sich jeweils auf der ersten von zwei Seiten ein QR-Code befindet. 
-                            Die folgende Seite ohne QR-Code wird automatisch demselben Schüler zugeordnet.
+                        <div id="qr-position-settings" class="qr-position-dropdowns">
+                            <div class="qr-position-item">
+                                <label for="qr-position-a4">QR-Code Position (A4):</label>
+                                <select id="qr-position-a4">
+                                    <option value="vorne" selected>Vorderseite</option>
+                                    <option value="hinten">Rückseite</option>
+                                </select>
+                            </div>
+                            <div class="qr-position-item">
+                                <label for="qr-position-a3">QR-Code Position (A3):</label>
+                                <select id="qr-position-a3">
+                                    <option value="innen">Innenseiten (Seite 2 oder 3)</option>
+                                    <option value="aussen" selected>Außenseite (Seite 1 oder 4)</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
 
                     <div class="checkbox-group">
                         <label>
                             <input type="checkbox" id="split-a3"> 
-                            A3-Bögen teilen
+                            A3-Bögen in einzelne A4-Seiten teilen
                         </label>
-                        <div class="checkbox-explanation">
-                            Das bedeutet: A3 Seiten werden in zwei A4 Seiten geteilt. Der QR-Code muss dabei außen angebracht sein.
-                        </div>
                     </div>
 
                     <div class="checkbox-group">
                         <label>
                             <input type="checkbox" id="quick-and-dirty" checked> 
-                            Quick and dirty
+                            Quick and dirty: beschleunigte Suche bei mehrseitigen Scans (empfohlen)
                         </label>
-                        <div class="checkbox-explanation">
-                            Das bedeutet: Auf der Folgeseite einer Seite mit QR-Code wird nur oberflächlich nach einem neuen Code gesucht.
-                        </div>
                     </div>
                 </div>
 
                 <div class="progress">
-                    <div id="scan-progress-bar" class="progress-bar hidden"></div>
+                    <div id="scan-progress-bar" class="progress-bar"></div>
                 </div>
 
                 <div class="output-area hidden" id="scan-output"></div>
@@ -220,7 +226,7 @@
             <span class="version">v2.1.2</span>
             <span class="upload-time"></span>
             <span class="footer-separator">•</span>
-            <span class="author">(c) Hannes Funk, 2025</span>
+            <span class="author">(c) Hannes Funk, 2026</span>
             <span class="footer-separator">•</span>
             <a href="datenschutz.html" target="_blank" class="footer-link">Datenschutzhinweise</a>
         </div>
