@@ -17,7 +17,6 @@ class DiRueLeiApp {
     
     async init() {
         try {
-            document.querySelector('.version').textContent = `v${APP_VERSION}`;
             this.setupEventListeners();
             this.initializeScanWorker();
             
@@ -35,7 +34,7 @@ class DiRueLeiApp {
         }
         
         console.log('Initializing scan worker...');
-        this.scanWorker = new Worker('scan-worker.js?v=' + APP_VERSION_NUM);
+        this.scanWorker = new Worker('scan-worker.js?v=222');
         
         this.scanWorker.onmessage = (event) => {
             this.handleWorkerMessage(event.data);
@@ -152,7 +151,6 @@ class DiRueLeiApp {
     
     setupEventListeners() {
         const listeners = [
-            {'id': 'open-instructions-btn', 'func': this.openInstructions, 'event': 'click'},
             {'id': 'csv-files', 'func': this.handleCsvFileUpload, 'event': 'change'},
             {'id': 'generate-qr-btn', 'func': this.generateQRPdf, 'event': 'click'},
             {'id': 'pdf-files', 'func': this.handlePdfFilesUpload, 'event': 'change'},
@@ -161,7 +159,11 @@ class DiRueLeiApp {
             {'id': 'checkbox-use-offset', 'func': this.toggleOffset, 'event': 'change'},
             {'id': 'checkbox-select-students', 'func': this.toggleSelectStudents, 'event': 'change'},
             {'id': 'select-all', 'func': this.toggleSelectAll, 'event': 'change'},
-            {'id': 'two-page-scan', 'func': this.toggleTwoPageScan, 'event': 'change'}
+            {'id': 'two-page-scan', 'func': this.toggleTwoPageScan, 'event': 'change'},
+            {'id': 'show-qr-generation-btn', 'func': showQRGeneration, 'event': 'click'},
+            {'id': 'back-from-qr-btn', 'func': showMainPage, 'event': 'click'},
+            {'id': 'back-from-scan-btn', 'func': showMainPage, 'event': 'click'},
+            {'id': 'show-pdf-scan-btn', 'func': showPDFScan, 'event': 'click'}
         ];
 
         for (const listener of listeners) {
@@ -353,19 +355,6 @@ class DiRueLeiApp {
         }
     }
 
-    openInstructions() {
-        try {
-            window.open('anleitung.pdf', '_blank');
-        } catch (error) {
-            console.error('Failed to open instructions:', error);
-            if (window.diRueLeiApp) {
-                window.diRueLeiApp.showStatus('Die Anleitung konnte nicht im Browser geöffnet werden.', 'error');
-            } else {
-                alert('Die Anleitung konnte nicht im Browser geöffnet werden.');
-            }
-        }
-    }
-    
     parseCSV(csvText) {
         const lines = csvText.trim().split('\n');
         if (lines.length < 2) 
