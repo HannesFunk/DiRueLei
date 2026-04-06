@@ -322,7 +322,7 @@ class ExamReader :
 
     def _qr_on_back(self, page_size) :
         if page_size == "A3" :
-            return self.qr_position_a3 == "aussen"
+            return self.qr_position_a3 == "innen"
         else :
             return self.qr_position_a4 == "hinten"
 
