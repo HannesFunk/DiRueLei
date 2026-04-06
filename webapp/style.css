@@ -126,6 +126,15 @@ body {
     text-decoration: underline;
 }
 
+.btn-link-clear {
+    margin-top: 10px;
+}
+
+.clear-icon {
+    font-size: 14px;
+    margin-right: 5px;
+}
+
 .hidden {
     display: none !important;
 }
