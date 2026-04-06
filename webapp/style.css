@@ -452,20 +452,6 @@ input[type="number"] {
     }
 }
 
-/* Output Area - Tech Style */
-.output-area {
-    background: #1e1e1e;
-    border: 1px solid #333;
-    border-radius: 8px;
-    padding: 15px;
-    margin-top: 20px;
-    font-family: 'Courier New', Consolas, Monaco, monospace;
-    color: #d4d4d4;
-    height: 300px;
-    overflow-y: auto;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-}
-
 #scan-output {
     background: #1e1e1e;
     border: 1px solid #333;
@@ -477,9 +463,32 @@ input[type="number"] {
     overflow-y: auto;
 }
 
+/* Scrollbar styling for dark theme */
+.output-area::-webkit-scrollbar,
+#scan-output::-webkit-scrollbar {
+    width: 10px;
+}
+
+.output-area::-webkit-scrollbar-track,
+#scan-output::-webkit-scrollbar-track {
+    background: #1e1e1e;
+    border-radius: 4px;
+}
+
+.output-area::-webkit-scrollbar-thumb,
+#scan-output::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 4px;
+}
+
+.output-area::-webkit-scrollbar-thumb:hover,
+#scan-output::-webkit-scrollbar-thumb:hover {
+    background: #777;
+}
+
 /* Status Output Messages */
 .status-output {
-    padding: 2px 10px;
+    padding: 5px 10px;
     margin: 3px 0;
     border-left: 3px solid #666;
     background: #252526;
@@ -487,6 +496,7 @@ input[type="number"] {
     font-size: 12px;
     line-height: 1.4;
     transition: all 0.2s ease;
+    animation: slideInFromRight 0.3s ease;
 }
 
 .status-output:hover {
@@ -548,70 +558,6 @@ input[type="number"] {
     font-weight: bold;
 }
 
-/* Scrollbar styling for dark theme */
-.output-area::-webkit-scrollbar,
-#scan-output::-webkit-scrollbar {
-    width: 10px;
-}
-
-.output-area::-webkit-scrollbar-track,
-#scan-output::-webkit-scrollbar-track {
-    background: #1e1e1e;
-    border-radius: 4px;
-}
-
-.output-area::-webkit-scrollbar-thumb,
-#scan-output::-webkit-scrollbar-thumb {
-    background: #555;
-    border-radius: 4px;
-}
-
-.output-area::-webkit-scrollbar-thumb:hover,
-#scan-output::-webkit-scrollbar-thumb:hover {
-    background: #777;
-}
-
-/* Tech-style table in output */
-.output-area table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 15px 0;
-    background: #252526;
-}
-
-.output-area th {
-    background: #2d2d30;
-    color: #4fc3f7;
-    padding: 10px;
-    text-align: left;
-    border-bottom: 2px solid #4fc3f7;
-    font-weight: 600;
-    text-transform: uppercase;
-    font-size: 12px;
-    letter-spacing: 1px;
-}
-
-.output-area td {
-    padding: 10px;
-    border-bottom: 1px solid #333;
-    color: #d4d4d4;
-}
-
-.output-area tr:hover {
-    background: #2d2d30;
-}
-
-.output-area h4 {
-    color: #4fc3f7;
-    margin: 0 0 15px 0;
-    font-size: 16px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    border-bottom: 2px solid #4fc3f7;
-    padding-bottom: 8px;
-}
-
 /* Animation for new messages */
 @keyframes slideInFromRight {
     from {
@@ -622,50 +568,6 @@ input[type="number"] {
         opacity: 1;
         transform: translateX(0);
     }
-}
-
-.status-output {
-    padding: 6px 10px;
-    margin: 3px 0;
-    border-left: 3px solid #666;
-    background: #252526;
-    border-radius: 4px;
-    font-size: 12px;
-    line-height: 1.4;
-    transition: all 0.2s ease;
-    animation: slideInFromRight 0.3s ease;
-}
-
-/* Tech-style status box */
-.status-box {
-    background: #1e1e1e;
-    border: 1px solid #333;
-    border-radius: 8px;
-    padding: 20px;
-    margin: 10px 0;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-}
-
-.status-box h4 {
-    color: #4fc3f7;
-    margin: 0 0 15px 0;
-    font-family: 'Courier New', Consolas, Monaco, monospace;
-    font-size: 16px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    border-bottom: 2px solid #4fc3f7;
-    padding-bottom: 8px;
-}
-
-/* Code-like appearance for technical data */
-.tech-data {
-    font-family: 'Courier New', Consolas, Monaco, monospace;
-    background: #252526;
-    padding: 4px 8px;
-    border-radius: 3px;
-    color: #ce9178;
-    font-size: 12px;
 }
 
 /* Footer with Version */
