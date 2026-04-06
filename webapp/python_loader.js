@@ -22,15 +22,8 @@ class PythonModuleLoader {
 
     async loadAndExecuteModule(moduleName, filePath) {
         try {
-            console.log(`Loading Python module: ${moduleName} from ${filePath}`);
-            
-            // Load the Python code from file
             const pythonCode = await this.loadModuleFromFile(filePath);
-            
-            // Execute the Python code in Pyodide
             this.pyodide.runPython(pythonCode);
-            
-            // Store reference that module is loaded
             this.loadedModules.set(moduleName, filePath);
             
             console.log(`Successfully loaded Python module: ${moduleName}`);
@@ -57,8 +50,6 @@ class PythonModuleLoader {
         
         const successful = results.filter(r => r.success);
         const failed = results.filter(r => !r.success);
-        
-        console.log(`Loaded ${successful.length}/${results.length} Python modules successfully`);
         
         if (failed.length > 0) {
             console.warn('Failed to load modules:', failed.map(f => f.name));

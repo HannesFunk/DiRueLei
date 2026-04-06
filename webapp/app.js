@@ -51,10 +51,6 @@ class DiRueLeiApp {
     
     handleWorkerMessage(data) {
         switch (data.type) {
-            case 'READY':
-                console.log('Application loaded.');
-                break;
-                
             case 'INITIALIZED':
                 this.workerInitialized = true;
                 console.log('Scan worker ready', 'success');
@@ -164,7 +160,8 @@ class DiRueLeiApp {
             {'id': 'process-pdf-btn', 'func': this.startPdfScan, 'event': 'click'},
             {'id': 'checkbox-use-offset', 'func': this.toggleOffset, 'event': 'change'},
             {'id': 'checkbox-select-students', 'func': this.toggleSelectStudents, 'event': 'change'},
-            {'id': 'select-all', 'func': this.toggleSelectAll, 'event': 'change'}
+            {'id': 'select-all', 'func': this.toggleSelectAll, 'event': 'change'},
+            {'id': 'two-page-scan', 'func': this.toggleTwoPageScan, 'event': 'change'}
         ];
 
         for (const listener of listeners) {
@@ -196,7 +193,7 @@ class DiRueLeiApp {
         }
     }
     
-    setupDropzone(dropzone, fileInput, onFilesSelected) {
+    setupDropzone(dropzone, fileInput, onFilesSelected) {+
         dropzone.addEventListener('click', () => {
             fileInput.click();
         });
@@ -285,6 +282,17 @@ class DiRueLeiApp {
             studentSelection.classList.remove('hidden');
         } else {
             studentSelection.classList.add('hidden');
+        }
+    }
+
+    toggleTwoPageScan() {
+        const checkbox = document.getElementById('two-page-scan');
+        const positionSettings = document.getElementById('qr-position-settings');
+        
+        if (checkbox.checked) {
+            positionSettings.classList.remove('hidden');
+        } else {
+            positionSettings.classList.add('hidden');
         }
     }
     
@@ -508,7 +516,9 @@ class DiRueLeiApp {
 
         const dropzone = document.getElementById(extension + '-dropzone');
         const fileInput = document.getElementById(extension + '-files');
-        
+        const scanOutput = document.getElementById('scan-output');
+        const progressbar = document.getElementById('scan-progress-bar').parentNode;
+                
         if (dropzone) {
             dropzone.classList.remove('has-files');
             this.resetDropzoneText(dropzone);
@@ -516,6 +526,15 @@ class DiRueLeiApp {
         
         if (fileInput) {
             fileInput.value = '';
+        }
+
+        if (scanOutput) {
+            scanOutput.innerHTML = '';
+            scanOutput.classList.add('hidden');
+        }
+
+        if (progressbar) {
+            progressbar.classList.add('hidden');
         }
         
         if (extension == 'pdf') {
@@ -580,7 +599,9 @@ class DiRueLeiApp {
             const scanOptions = {
                 twoPageScan: document.getElementById('two-page-scan')?.checked || false,
                 splitA3: document.getElementById('split-a3')?.checked || false,
-                quickAndDirty: document.getElementById('quick-and-dirty')?.checked || false
+                quickAndDirty: document.getElementById('quick-and-dirty')?.checked || false,
+                qrPositionA4: document.getElementById('qr-position-a4')?.value || 'vorne',
+                qrPositionA3: document.getElementById('qr-position-a3')?.value || 'aussen'
             };
             
             const pdfFilesForWorker = this.pdfFiles.map(file => ({
