@@ -9,12 +9,10 @@
     <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin">
     <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp">
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' blob: 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self' https://cdn.jsdelivr.net/pyodide/ https://pypi.org/ https://files.pythonhosted.org/; worker-src 'self'; child-src blob:; frame-src 'none'; font-src 'self'; base-uri 'self'; form-action 'self';">
-    <script>
-        const APP_VERSION = "2.2.1";
-        const APP_VERSION_NUM = APP_VERSION.replaceAll(".", "");
-    </script>
-    <script src="app.js?v=221"></script>
-    <link rel="stylesheet" href="style.css?v=221">
+
+    <!-- APP_VERSION = "2.2.2" -->
+    <script src="app.js?v=222"></script>
+    <link rel="stylesheet" href="style.css?v=222">
 </head>
 <body>
     <div class="container">
@@ -31,7 +29,7 @@
                         <div class="box-title">Abgabe im Mebis-Kurs erstellen</div>
                         <div class="box-description">Bitte mit den Einstellungen aus der Anleitung eine Abgabe im Mebis-Kurs einrichten.</div>
                     </div>
-                    <button class="btn"><a href="anleitung.pdf" target="_blank">Anleitung</a></button>
+                    <a href="anleitung.pdf" target="_blank"><button class="btn">Anleitung</button></a>
                 </div>
 
                 <div class="numbered-box">
@@ -40,7 +38,7 @@
                         <div class="box-title">QR-Codes erzeugen</div>
                         <div class="box-description">CSV-Datei gemäß der Anleitung auswählen. QR-Codes werden dann als PDF-Datei erzeugt.</div>
                     </div>
-                    <button class="btn" onclick="showQRGeneration()">CSV auswählen</button>
+                    <button class="btn" id="show-qr-generation-btn">CSV auswählen</button>
                 </div>
 
                 <div class="numbered-box">
@@ -57,7 +55,7 @@
                         <div class="box-title">Scan</div>
                         <div class="box-description">Gescannte Datei(en) auswählen, damit ZIP-Datei erzeugt wird.</div>
                     </div>
-                    <button class="btn" onclick="showPDFScan()">Scan(s) auswählen</button>
+                    <button class="btn" id="show-pdf-scan-btn">Scan(s) auswählen</button>
                 </div>
 
                 <div class="numbered-box">
@@ -130,7 +128,7 @@
                 </div>
 
                 <div class="button-group">
-                    <button class="btn btn-secondary" onclick="showMainPage();">Zurück zur Hauptseite</button>
+                    <button class="btn btn-secondary" id="back-from-qr-btn">Zurück zur Hauptseite</button>
                     <button class="btn" id="generate-qr-btn">QR-Codes erzeugen</button>
                 </div>
             </div>
@@ -212,7 +210,7 @@
                 <div class="output-area hidden" id="scan-output"></div>
 
                 <div class="button-group">
-                    <button class="btn btn-secondary" onclick="showMainPage()">Zurück zur Hauptseite</button>
+                    <button class="btn btn-secondary" id="back-from-scan-btn">Zurück zur Hauptseite</button>
                     <button class="btn btn-secondary" id="download-results-btn">Zusammenfassung  öffnen</button>
                     <button class="btn" id="process-pdf-btn">PDFs einlesen</button>
                 </div>
@@ -223,8 +221,8 @@
     <footer class="footer">
         <div class="footer-content">
             DiRueLei
-            <span class="version">v2.1.2</span>
-            <span class="upload-time"></span>
+            <span class="version">v2.2.2</span>
+            <span class="upload-time">vom 07.04.2026, 00:46</span>
             <span class="footer-separator">•</span>
             <span class="author">(c) Hannes Funk, 2026</span>
             <span class="footer-separator">•</span>
