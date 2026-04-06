@@ -5,3 +5,5 @@ venv/
 .venv2/
 __pycache__/
 gui.spec
+checkliste.md
+test-data-mtg/
