@@ -252,6 +252,3 @@ def log_callback(message, level='info'):
         });
     }
 }
-
-// Send initial ready message
-postMessage({ type: 'READY' });
