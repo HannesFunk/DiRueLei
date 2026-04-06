@@ -355,7 +355,7 @@ class DiRueLeiApp {
 
     openInstructions() {
         try {
-            window.open('https://hannesfunk.github.io/anleitung.pdf', '_blank');
+            window.open('anleitung.pdf', '_blank');
         } catch (error) {
             console.error('Failed to open instructions:', error);
             if (window.diRueLeiApp) {

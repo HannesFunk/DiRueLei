@@ -1,4 +1,25 @@
-importScripts('https://cdn.jsdelivr.net/pyodide/v0.28.3/full/pyodide.js');
+const PYODIDE_VERSION = '0.28.3';
+const PYODIDE_BASE_URL = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/`;
+const PYODIDE_JS_SRI = 'sha384-4X7gSPzQ4pHfjTE5aBEPJAQcHu55sciq+NWO3OUOZ3zHSJhn4te9CBjUyRSr+nei';
+
+async function loadScriptWithSRI(url, expectedHash) {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+    const buffer = await response.arrayBuffer();
+
+    const [algo, expectedDigest] = expectedHash.split('-');
+    const hashBuffer = await crypto.subtle.digest(algo.toUpperCase().replace('SHA', 'SHA-'), buffer);
+    const actualDigest = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
+
+    if (actualDigest !== expectedDigest) {
+        throw new Error(
+            `SRI check failed for ${url}. Expected: ${expectedDigest}, got: ${actualDigest}`
+        );
+    }
+
+    const blob = new Blob([buffer], { type: 'application/javascript' });
+    importScripts(URL.createObjectURL(blob));
+}
 
 let pyodide = null;
 let ExamReader = null;
@@ -12,9 +33,11 @@ async function initialize() {
         const version = params.get('v');
         
         postMessage({ type: 'LOG', message: 'Loading Pyodide in worker...', level: 'info' });
+
+        await loadScriptWithSRI(PYODIDE_BASE_URL + 'pyodide.js', PYODIDE_JS_SRI);
         
         pyodide = await loadPyodide({
-            indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.28.3/full/'
+            indexURL: PYODIDE_BASE_URL
         });
         
         postMessage({ type: 'INIT_PROGRESS', package: 'Pyodide', current: 1, total: 'n'});

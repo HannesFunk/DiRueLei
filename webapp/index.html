@@ -8,13 +8,13 @@
     <!-- Cross-Origin Isolation Headers for SharedArrayBuffer support -->
     <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin">
     <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' blob: 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self' https://cdn.jsdelivr.net/pyodide/ https://pypi.org/ https://files.pythonhosted.org/; worker-src 'self'; child-src blob:; frame-src 'none'; font-src 'self'; base-uri 'self'; form-action 'self';">
     <script>
         const APP_VERSION = "2.2.1";
         const APP_VERSION_NUM = APP_VERSION.replaceAll(".", "");
-        document.write(`<script src="app.js?v=${APP_VERSION_NUM}"><\/script>`);
-        document.write(`<link rel="stylesheet" href="style.css?v=${APP_VERSION_NUM}">`);
-            
     </script>
+    <script src="app.js?v=221"></script>
+    <link rel="stylesheet" href="style.css?v=221">
 </head>
 <body>
     <div class="container">
@@ -31,7 +31,7 @@
                         <div class="box-title">Abgabe im Mebis-Kurs erstellen</div>
                         <div class="box-description">Bitte mit den Einstellungen aus der Anleitung eine Abgabe im Mebis-Kurs einrichten.</div>
                     </div>
-                    <button id ="open-instructions-btn" class="btn">Anleitung</button>
+                    <button class="btn"><a href="anleitung.pdf" target="_blank">Anleitung</a></button>
                 </div>
 
                 <div class="numbered-box">
@@ -161,8 +161,8 @@
                     </div>
                 </div>
 
-                <button id="clear-pdf-files-btn" class="btn-link hidden" style="margin-top: 10px;">
-                    <span style="font-size: 14px; margin-right: 5px;">×</span>
+                <button id="clear-pdf-files-btn" class="btn-link btn-link-clear hidden">
+                    <span class="clear-icon">×</span>
                     Alle Dateien entfernen
                 </button>
 
