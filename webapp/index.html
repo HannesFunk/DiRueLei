@@ -240,6 +240,27 @@
                             Quick and dirty: beschleunigte Suche bei mehrseitigen Scans (empfohlen)
                         </label>
                     </div>
+
+                    <div class="checkbox-group" style="margin-top: 15px;">
+                        <span style="font-weight: bold; display: block; margin-bottom: 8px;">Druckformat der Zusammenfassung:</span>
+                        <div style="margin-left: 20px; display: flex; flex-direction: column; gap: 8px;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                <input type="radio" name="summary-mode" id="summary-mode-namepage" value="namepage" checked>
+                                Separates Deckblatt mit Schülername vor jeder Arbeit
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                <input type="radio" name="summary-mode" id="summary-mode-watermark" value="watermark">
+                                Schülername als Wasserzeichen auf den Seiten der Arbeit (papierfreundlich)
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="checkbox-group" style="margin-top: 15px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="student-pdf-watermark">
+                            Schülername als Wasserzeichen in jedes einzelne Schüler-PDF einfügen (für ZIP/Artemis)
+                        </label>
+                    </div>
                 </div>
 
                 <div class="progress">
@@ -292,7 +313,7 @@
         <div class="footer-content">
             DiRueLei
             <span class="version">v2.2.7</span>
-            <span class="upload-time">vom 30.05.2026, 14:36</span>
+            <span class="upload-time">vom 10.07.2026, 12:23</span>
             <span class="footer-separator">•</span>
             <span class="author">(c) Hannes Funk, Valentin Herrmann; 2026</span>
             <span class="footer-separator">•</span>

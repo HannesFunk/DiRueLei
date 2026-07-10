@@ -976,7 +976,9 @@ class DiRueLeiApp {
                 splitA3: document.getElementById('split-a3')?.checked || false,
                 quickAndDirty: document.getElementById('quick-and-dirty')?.checked || false,
                 qrPositionA4: document.getElementById('qr-position-a4')?.value || 'vorne',
-                qrPositionA3: document.getElementById('qr-position-a3')?.value || 'aussen'
+                qrPositionA3: document.getElementById('qr-position-a3')?.value || 'aussen',
+                summaryMode: document.querySelector('input[name="summary-mode"]:checked')?.value || 'namepage',
+                studentPdfWatermark: document.getElementById('student-pdf-watermark')?.checked || false
             };
 
             const pdfFilesForWorker = this.pdfFiles.map(file => ({

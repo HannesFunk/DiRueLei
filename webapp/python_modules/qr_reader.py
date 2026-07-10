@@ -26,6 +26,8 @@ class ExamReader :
         self.quick_and_dirty = options_dict.get("quick_and_dirty", False)
         self.qr_position_a4 = options_dict.get("qr_position_a4", "vorne")
         self.qr_position_a3 = options_dict.get("qr_position_a3", "aussen")
+        self.summary_mode = options_dict.get("summary_mode", "namepage")
+        self.student_pdf_watermark = options_dict.get("student_pdf_watermark", False)
             
         self.pdf_files_data = pdf_files_data
         
@@ -318,20 +320,23 @@ class ExamReader :
             c.save()
             missing_name_buffer.seek(0)
             self._fitz_add_data(summary_fitz, missing_name_buffer.getvalue())
-
             for missing_page_num in self.missing_pages:
                 summary_fitz.insert_pdf(self.fitz_source_pdf, from_page=missing_page_num, to_page=missing_page_num)
 
         for (student, pdf_data) in preview_pdf :
-            name_page_buffer = io.BytesIO()
-            c = canvas.Canvas(name_page_buffer, pagesize=A4)
-            c.setFont("Helvetica-Bold", 32)
-            c.drawCentredString(A4[0]/2, A4[1]/2, f"Schüler/-in: {student.split('_')[0]}")
-            c.save()
-            name_page_buffer.seek(0)
-            self._fitz_add_data(summary_fitz, name_page_buffer.getvalue())
-            self._fitz_add_data(summary_fitz, pdf_data)
-
+            if self.summary_mode == "watermark":
+                watermarked_pdf = self._add_watermark(pdf_data, student.split('_')[0])
+                self._fitz_add_data(summary_fitz, watermarked_pdf)
+            else:
+                name_page_buffer = io.BytesIO()
+                c = canvas.Canvas(name_page_buffer, pagesize=A4)
+                c.setFont("Helvetica-Bold", 32)
+                c.drawCentredString(A4[0]/2, A4[1]/2, f"Schüler/-in: {student.split('_')[0]}")
+                c.save()
+                name_page_buffer.seek(0)
+                self._fitz_add_data(summary_fitz, name_page_buffer.getvalue())
+                self._fitz_add_data(summary_fitz, pdf_data)
+ 
         summary_buffer = io.BytesIO()
         summary_fitz.save(summary_buffer)
         summary_fitz.close()
@@ -341,6 +346,34 @@ class ExamReader :
         # Store in in_memory_files for ZIP creation
         self.in_memory_files["summary.pdf"] = summary_data
         return summary_data
+
+    def _add_watermark(self, pdf_data: bytes, name: str) -> bytes:
+        doc = fitz.open(stream=pdf_data, filetype="pdf")
+        for page in doc:
+            rect = page.rect
+            
+            # 1. Header watermark (top of page)
+            header_text = f"Schüler/-in: {name}"
+            try:
+                header_len = fitz.get_text_length(header_text, fontname="helv", fontsize=12)
+                header_x = (rect.width - header_len) / 2
+                page.insert_text((header_x, 30), header_text, fontsize=12, color=(1, 0.5, 0.5), fontname="helv", overlay=True)
+            except Exception:
+                page.insert_text((30, 30), header_text, fontsize=12, color=(1, 0.5, 0.5), overlay=True)
+            
+            # 2. Main center watermark
+            #try:
+            #    center_len = fitz.get_text_length(name, fontname="helv", fontsize=48)
+            #    center_x = (rect.width - center_len) / 2
+            #    center_y = rect.height / 2
+            #    page.insert_text((center_x, center_y), name, fontsize=48, color=(0.85, 0.85, 0.85), fontname="helv", overlay=True)
+            #except Exception:
+            #    page.insert_text((rect.width * 0.15, rect.height * 0.5), name, fontsize=48, color=(0.85, 0.85, 0.85), overlay=True)
+                
+        out = io.BytesIO()
+        doc.save(out)
+        doc.close()
+        return out.getvalue()
         
     
     def _build_summary_page (self):
@@ -427,13 +460,19 @@ class ExamReader :
         output_pdf.save(output_buffer)
         output_pdf.close()
         output_buffer.seek(0)
-        pdf_data = output_buffer.getvalue()
+        unwatermarked_pdf_data = output_buffer.getvalue()
+        
+        # Apply watermark to student PDF if option is set
+        if self.student_pdf_watermark:
+            pdf_data = self._add_watermark(unwatermarked_pdf_data, student.split('_')[0])
+        else:
+            pdf_data = unwatermarked_pdf_data
         
         # Store in in_memory_files for ZIP creation
         output_file_path = f"{student_folder}/{student}.pdf"
         self.in_memory_files[output_file_path] = pdf_data
         
-        return [num_pages, pdf_data]
+        return [num_pages, unwatermarked_pdf_data]
             
 
     def _qr_on_back(self, page_size) :
