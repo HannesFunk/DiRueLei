@@ -101,33 +101,35 @@
                     </div>
                 </div>
 
-                <div style="text-align: center; margin: 20px 0; font-weight: bold; color: #666;">
-                    &mdash; ODER &mdash;
-                </div>
-
-                <div class="artemis-import-area">
-                    <h3 style="margin-top: 0;">Daten aus Artemis abrufen</h3>
-                    <p class="artemis-help-text">
-                        Zum Abrufen der Studierendendaten benötigen Sie Ihren JWT-Token aus Artemis.<br>
-                        <a href="#" id="artemis-help-toggle" class="artemis-help-link">Wie erhalte ich den
-                            JWT-Token?</a>
-                    </p>
-                    <div id="artemis-help-box" class="artemis-help-box hidden">
-                        <ol>
-                            <li>Melden Sie sich bei <a href="https://artemis.tum.de" target="_blank"
-                                    rel="noopener">artemis.tum.de</a> an.</li>
-                            <li>Öffnen Sie die Entwicklerkonsole (F12) → Reiter <strong>Application</strong> (Chrome)
-                                bzw. <strong>Storage</strong> (Firefox).</li>
-                            <li>Unter <strong>Cookies → https://artemis.tum.de</strong> finden Sie den Cookie
-                                <code>jwt</code>.
-                            </li>
-                            <li>Kopieren Sie den <strong>Wert</strong> (langer Text) und fügen Sie ihn unten ein.</li>
-                        </ol>
+                <div class="artemis-feature hidden">
+                    <div style="text-align: center; margin: 20px 0; font-weight: bold; color: #666;">
+                        &mdash; ODER &mdash;
                     </div>
-                    <div class="artemis-form">
-                        <input type="password" id="artemis-jwt" placeholder="JWT-Token einfügen" autocomplete="off">
-                        <input type="text" id="artemis-courseid" placeholder="Course ID (z.B. 233)" autocomplete="off">
-                        <button class="btn" id="fetch-artemis-btn">Daten abrufen</button>
+
+                    <div class="artemis-import-area">
+                        <h3 style="margin-top: 0;">Daten aus Artemis abrufen</h3>
+                        <p class="artemis-help-text">
+                            Zum Abrufen der Studierendendaten benötigen Sie Ihren JWT-Token aus Artemis.<br>
+                            <a href="#" id="artemis-help-toggle" class="artemis-help-link">Wie erhalte ich den
+                                JWT-Token?</a>
+                        </p>
+                        <div id="artemis-help-box" class="artemis-help-box hidden">
+                            <ol>
+                                <li>Melden Sie sich bei <a href="https://artemis.tum.de" target="_blank"
+                                        rel="noopener">artemis.tum.de</a> an.</li>
+                                <li>Öffnen Sie die Entwicklerkonsole (F12) → Reiter <strong>Application</strong> (Chrome)
+                                    bzw. <strong>Storage</strong> (Firefox).</li>
+                                <li>Unter <strong>Cookies → https://artemis.tum.de</strong> finden Sie den Cookie
+                                    <code>jwt</code>.
+                                </li>
+                                <li>Kopieren Sie den <strong>Wert</strong> (langer Text) und fügen Sie ihn unten ein.</li>
+                            </ol>
+                        </div>
+                        <div class="artemis-form">
+                            <input type="password" id="artemis-jwt" placeholder="JWT-Token einfügen" autocomplete="off">
+                            <input type="text" id="artemis-courseid" placeholder="Course ID (z.B. 233)" autocomplete="off">
+                            <button class="btn" id="fetch-artemis-btn">Daten abrufen</button>
+                        </div>
                     </div>
                 </div>
 
@@ -204,41 +206,73 @@
                 </button>
 
                 <div id="scan-settings" class="scan-options hidden">
-                    <div class="checkbox-group">
-                        <label>
-                            <input type="checkbox" id="two-page-scan" checked>
-                            Doppelseitiger Scan mit nur einem QR-Code pro Blatt/ Bogen
-                        </label>
-                        <div id="qr-position-settings" class="qr-position-dropdowns">
-                            <div class="qr-position-item">
-                                <label for="qr-position-a4">QR-Code Position (A4):</label>
-                                <select id="qr-position-a4">
-                                    <option value="vorne" selected>Vorderseite</option>
-                                    <option value="hinten">Rückseite</option>
-                                </select>
+                    <div class="settings-grid">
+                        <!-- Left Column: Scan & Recognition -->
+                        <div class="settings-column">
+                            <div class="settings-column-title">1. Scan & QR-Code Erkennung</div>
+                            
+                            <div class="setting-subgroup">
+                                <label>
+                                    <input type="checkbox" id="two-page-scan" checked>
+                                    Doppelseitiger Scan mit nur einem QR-Code pro Blatt/ Bogen
+                                </label>
+                                <div id="qr-position-settings" class="qr-position-dropdowns" style="margin-left: 20px;">
+                                    <div class="qr-position-item">
+                                        <label for="qr-position-a4">QR-Code Position (A4):</label>
+                                        <select id="qr-position-a4">
+                                            <option value="vorne" selected>Vorderseite</option>
+                                            <option value="hinten">Rückseite</option>
+                                        </select>
+                                    </div>
+                                    <div class="qr-position-item">
+                                        <label for="qr-position-a3">QR-Code Position (A3):</label>
+                                        <select id="qr-position-a3">
+                                            <option value="innen">Innenseiten (Seite 2 oder 3)</option>
+                                            <option value="aussen" selected>Außenseite (Seite 1 oder 4)</option>
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="qr-position-item">
-                                <label for="qr-position-a3">QR-Code Position (A3):</label>
-                                <select id="qr-position-a3">
-                                    <option value="innen">Innenseiten (Seite 2 oder 3)</option>
-                                    <option value="aussen" selected>Außenseite (Seite 1 oder 4)</option>
-                                </select>
+
+                            <div class="setting-subgroup">
+                                <label>
+                                    <input type="checkbox" id="split-a3">
+                                    A3-Bögen in einzelne A4-Seiten teilen
+                                </label>
+                            </div>
+
+                            <div class="setting-subgroup">
+                                <label>
+                                    <input type="checkbox" id="quick-and-dirty" checked>
+                                    Quick and dirty: beschleunigte Suche (empfohlen)
+                                </label>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="checkbox-group">
-                        <label>
-                            <input type="checkbox" id="split-a3">
-                            A3-Bögen in einzelne A4-Seiten teilen
-                        </label>
-                    </div>
+                        <!-- Right Column: Output & Layout Formatting -->
+                        <div class="settings-column">
+                            <div class="settings-column-title">2. Ausgabe- & Download-Format</div>
 
-                    <div class="checkbox-group">
-                        <label>
-                            <input type="checkbox" id="quick-and-dirty" checked>
-                            Quick and dirty: beschleunigte Suche bei mehrseitigen Scans (empfohlen)
-                        </label>
+                            <div class="setting-subgroup">
+                                <div class="subgroup-title">Druckformat der Zusammenfassung:</div>
+                                <label>
+                                    <input type="radio" name="summary-mode" id="summary-mode-namepage" value="namepage" checked>
+                                    Separates Deckblatt mit Schülername vor jeder Arbeit
+                                </label>
+                                <label>
+                                    <input type="radio" name="summary-mode" id="summary-mode-watermark" value="watermark">
+                                    Schülername als Wasserzeichen (papierfreundlich)
+                                </label>
+                            </div>
+
+                            <div class="setting-subgroup">
+                                <div class="subgroup-title">Format der einzelnen Schüler-PDFs:</div>
+                                <label>
+                                    <input type="checkbox" id="student-pdf-watermark">
+                                    Schülername als Wasserzeichen in jedes Schüler-PDF einfügen
+                                </label>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -248,7 +282,7 @@
 
                 <div class="output-area hidden" id="scan-output"></div>
 
-                <div id="artemis-send-section" class="artemis-import-area hidden" style="margin-top: 20px;">
+                <div id="artemis-send-section" class="artemis-import-area artemis-feature hidden" style="margin-top: 20px;">
                     <h3 style="margin-top: 0;">Ergebnisse über Artemis versenden</h3>
                     <p class="artemis-help-text">
                         Senden Sie die gescannten PDFs direkt an die Studierenden über Artemis-Nachrichten.<br>
@@ -292,11 +326,15 @@
         <div class="footer-content">
             DiRueLei
             <span class="version">v2.2.7</span>
-            <span class="upload-time">vom 30.05.2026, 14:36</span>
+            <span class="upload-time">vom 10.07.2026, 12:40</span>
             <span class="footer-separator">•</span>
             <span class="author">(c) Hannes Funk, Valentin Herrmann; 2026</span>
             <span class="footer-separator">•</span>
             <a href="datenschutz.html" target="_blank" class="footer-link">Datenschutzhinweise</a>
+            <span class="footer-separator">•</span>
+            <label class="artemis-toggle-label">
+                <input type="checkbox" id="artemis-toggle"> Artemis-Modus
+            </label>
         </div>
     </footer>
 

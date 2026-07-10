@@ -30,6 +30,13 @@ class DiRueLeiApp {
             this.setupEventListeners();
             this.initializeScanWorker();
 
+            // Set up initial Artemis toggle state
+            const toggle = document.getElementById('artemis-toggle');
+            if (toggle) {
+                toggle.checked = localStorage.getItem('artemisMode') === 'true';
+            }
+            this.updateArtemisVisibility();
+
             this.showStatus('Einiges wird noch im Hintergrund geladen.', 'init-progress');
 
         } catch (error) {
@@ -156,10 +163,7 @@ class DiRueLeiApp {
             }
 
             // Show the Artemis send section
-            const sendSection = document.getElementById('artemis-send-section');
-            if (sendSection) {
-                sendSection.classList.remove('hidden');
-            }
+            this.updateArtemisVisibility();
 
             this.showStatus('PDF Scan erfolgreich!', 'success');
         } catch (error) {
@@ -195,7 +199,8 @@ class DiRueLeiApp {
             { 'id': 'fetch-artemis-btn', 'func': this.handleFetchArtemis, 'event': 'click' },
             { 'id': 'artemis-help-toggle', 'func': this.toggleArtemisHelp, 'event': 'click' },
             { 'id': 'send-artemis-btn', 'func': this.handleSendViaArtemis, 'event': 'click' },
-            { 'id': 'artemis-send-help-toggle', 'func': this.toggleArtemisSendHelp, 'event': 'click' }
+            { 'id': 'artemis-send-help-toggle', 'func': this.toggleArtemisSendHelp, 'event': 'click' },
+            { 'id': 'artemis-toggle', 'func': this.handleArtemisToggle, 'event': 'change' }
         ];
 
         for (const listener of listeners) {
@@ -601,6 +606,31 @@ class DiRueLeiApp {
 
 
 
+    handleArtemisToggle(e) {
+        localStorage.setItem('artemisMode', e.target.checked);
+        this.updateArtemisVisibility();
+    }
+
+    updateArtemisVisibility() {
+        const artemisMode = localStorage.getItem('artemisMode') === 'true';
+        const elements = document.querySelectorAll('.artemis-feature');
+        elements.forEach(el => {
+            if (el.id === 'artemis-send-section') {
+                if (artemisMode && this.summaryBytes) {
+                    el.classList.remove('hidden');
+                } else {
+                    el.classList.add('hidden');
+                }
+            } else {
+                if (artemisMode) {
+                    el.classList.remove('hidden');
+                } else {
+                    el.classList.add('hidden');
+                }
+            }
+        });
+    }
+
     toggleArtemisHelp(e) {
         if (e) e.preventDefault();
         const helpBox = document.getElementById('artemis-help-box');
@@ -911,7 +941,9 @@ class DiRueLeiApp {
 
         if (extension == 'pdf') {
             this.pdfFiles = [];
+            this.summaryBytes = null;
             document.getElementById('clear-pdf-files-btn')?.classList.add('hidden');
+            this.updateArtemisVisibility();
         }
     }
 
@@ -976,7 +1008,9 @@ class DiRueLeiApp {
                 splitA3: document.getElementById('split-a3')?.checked || false,
                 quickAndDirty: document.getElementById('quick-and-dirty')?.checked || false,
                 qrPositionA4: document.getElementById('qr-position-a4')?.value || 'vorne',
-                qrPositionA3: document.getElementById('qr-position-a3')?.value || 'aussen'
+                qrPositionA3: document.getElementById('qr-position-a3')?.value || 'aussen',
+                summaryMode: document.querySelector('input[name="summary-mode"]:checked')?.value || 'namepage',
+                studentPdfWatermark: document.getElementById('student-pdf-watermark')?.checked || false
             };
 
             const pdfFilesForWorker = this.pdfFiles.map(file => ({

@@ -243,7 +243,9 @@ def log_callback(message, level='info'):
             split_a3: options.splitA3 || false,
             quick_and_dirty: options.quickAndDirty || false,
             qr_position_a4: options.qrPositionA4 || 'vorne',
-            qr_position_a3: options.qrPositionA3 || 'aussen'
+            qr_position_a3: options.qrPositionA3 || 'aussen',
+            summary_mode: options.summaryMode || 'namepage',
+            student_pdf_watermark: options.studentPdfWatermark || false
         });
         
         examReader.progress_callback = progressCallback;
