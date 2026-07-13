@@ -26,6 +26,8 @@ class ExamReader :
         self.quick_and_dirty = options_dict.get("quick_and_dirty", False)
         self.qr_position_a4 = options_dict.get("qr_position_a4", "vorne")
         self.qr_position_a3 = options_dict.get("qr_position_a3", "aussen")
+        self.summary_mode = options_dict.get("summary_mode", "namepage")
+        self.student_pdf_watermark = options_dict.get("student_pdf_watermark", False)
             
         self.pdf_files_data = pdf_files_data
         
@@ -106,10 +108,33 @@ class ExamReader :
         self.logMsg("PDFs merged in memory", "success")
         return fitz.open(stream=merged_buffer.getvalue(), filetype="pdf")
 
+    def _get_sort_key(self, student_str: str) -> str:
+        name = student_str.split("_")[0].strip()
+        
+        if "," in name:
+            last_name = name.split(",")[0].strip()
+        else:
+            parts = name.split()
+            last_name = parts[-1] if parts else name
+            
+        mod_name = last_name.lower()
+        if mod_name.startswith('von der ') or mod_name.startswith('van der '):
+            return mod_name[8:]
+        elif mod_name.startswith('van de ') or mod_name.startswith('von de '):
+            return mod_name[7:]
+        elif mod_name.startswith('van ') or mod_name.startswith('von ') or mod_name.startswith('san '):
+            return mod_name[4:]
+        elif mod_name.startswith('de ') or mod_name.startswith('da ') or mod_name.startswith('la ') or mod_name.startswith('le ') or mod_name.startswith('st '):
+            return mod_name[3:]
+        return mod_name
+
     def saveZipFile(self) : 
         self.summary = []
         preview_pdf = []
-        for student in self.student_page_map :
+        
+        sorted_students = sorted(self.student_page_map.keys(), key=self._get_sort_key)
+        
+        for student in sorted_students :
             num_pages, student_file_data = self._create_student_pdf(student)
             self.summary.append({
                 "Schüler/-in": student.split("_")[0], 
@@ -141,6 +166,99 @@ class ExamReader :
         else:
             self.logMsg("No ZIP data available. Call saveZipFile() first.", "error")
             return None
+
+    def _compress_pdf_bytes(self, pdf_bytes: bytes, max_size: int) -> bytes:
+        # First, try a quick save to see if just deflating/garbage collection helps
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        out_buf = io.BytesIO()
+        doc.save(out_buf, garbage=4, deflate=True)
+        doc.close()
+        current_bytes = out_buf.getvalue()
+        
+        if len(current_bytes) <= max_size:
+            return current_bytes
+            
+        # Start with a very low compression (high DPI)
+        target_dpi = 400.0
+        
+        while target_dpi >= 50.0:
+            self.logMsg(f"Target DPI: {target_dpi}", "info")
+            zoom = target_dpi / 72.0
+            mat = fitz.Matrix(zoom, zoom)
+            
+            # ALWAYS read from the original pdf_bytes to avoid compounding compression artifacts
+            doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+            compressed_doc = fitz.open()
+            
+            for page in doc:
+                pix = page.get_pixmap(matrix=mat)
+                new_page = compressed_doc.new_page(width=page.rect.width, height=page.rect.height)
+                try:
+                    img_bytes = pix.tobytes("jpeg")
+                except Exception:
+                    img_bytes = pix.tobytes("png")
+                    
+                new_page.insert_image(page.rect, stream=img_bytes)
+            
+            out_buf = io.BytesIO()
+            compressed_doc.save(out_buf, garbage=4, deflate=True)
+            compressed_doc.close()
+            doc.close()
+            
+            current_bytes = out_buf.getvalue()
+            
+            if len(current_bytes) <= max_size:
+                # We hit the target filesize!
+                break
+                
+            # Instead of a flat -25 DPI step (which takes many slow iterations),
+            # mathematically jump directly to the optimal DPI based on the exact overshoot.
+            ratio = max_size / len(current_bytes)
+            target_dpi = target_dpi * (ratio ** 0.5) * 0.95
+            
+        if len(current_bytes) > max_size:
+            raise ValueError(f"Zielgröße von {max_size/(1024*1024):.2f} MB konnte nicht erreicht werden (Aktuell: {len(current_bytes)/(1024*1024):.2f} MB).")
+                
+        return current_bytes
+
+    def get_student_files(self):
+        """Return list of {userId, filename, data} for each student PDF."""
+        import re
+        result = []
+        pattern = re.compile(r'^(.+?)_(\d+)\.pdf$')
+        max_size = 4.8 * 1024 * 1024
+        
+        # Filter files to process
+        files_to_process = [(path, data) for path, data in self.in_memory_files.items() if path != "summary.pdf"]
+        total_files = len(files_to_process)
+        
+        for i, (path, data) in enumerate(files_to_process):
+            filename = path.split("/")[-1]
+            match = pattern.match(filename)
+            if match:
+                user_id = match.group(2)
+                student_name = match.group(1)
+            else:
+                user_id = ""
+                student_name = filename
+                
+            upload_data = data
+            if len(data) > max_size:
+                self.logMsg(f"Komprimiere {filename} für Artemis-Upload auf unter 5MB...", "info")
+                try:
+                    upload_data = self._compress_pdf_bytes(data, max_size)
+                    self.logMsg(f"{len(upload_data)/len(data)*100:.2f}% ({len(data)/(1024*1024):.2f}MB -> {len(upload_data)/(1024*1024):.2f}MB)", "info")
+                except ValueError as e:
+                    self.logMsg(f"Fehler bei {filename}: {str(e)}", "error")
+                    raise ValueError(f"Konnte {filename} nicht ausreichend komprimieren: {str(e)}")
+                
+            result.append({"userId": user_id, "studentName": student_name, "filename": filename, "data": upload_data})
+            
+            # Update progress bar
+            if self.progress_callback:
+                self.progress_callback((i + 1) / total_files)
+                
+        return result
             
     def close(self):
         self.fitz_source_pdf.close()
@@ -202,20 +320,23 @@ class ExamReader :
             c.save()
             missing_name_buffer.seek(0)
             self._fitz_add_data(summary_fitz, missing_name_buffer.getvalue())
-
             for missing_page_num in self.missing_pages:
                 summary_fitz.insert_pdf(self.fitz_source_pdf, from_page=missing_page_num, to_page=missing_page_num)
 
         for (student, pdf_data) in preview_pdf :
-            name_page_buffer = io.BytesIO()
-            c = canvas.Canvas(name_page_buffer, pagesize=A4)
-            c.setFont("Helvetica-Bold", 32)
-            c.drawCentredString(A4[0]/2, A4[1]/2, f"Schüler/-in: {student.split('_')[0]}")
-            c.save()
-            name_page_buffer.seek(0)
-            self._fitz_add_data(summary_fitz, name_page_buffer.getvalue())
-            self._fitz_add_data(summary_fitz, pdf_data)
-
+            if self.summary_mode == "watermark":
+                watermarked_pdf = self._add_watermark(pdf_data, student.split('_')[0])
+                self._fitz_add_data(summary_fitz, watermarked_pdf)
+            else:
+                name_page_buffer = io.BytesIO()
+                c = canvas.Canvas(name_page_buffer, pagesize=A4)
+                c.setFont("Helvetica-Bold", 32)
+                c.drawCentredString(A4[0]/2, A4[1]/2, f"Schüler/-in: {student.split('_')[0]}")
+                c.save()
+                name_page_buffer.seek(0)
+                self._fitz_add_data(summary_fitz, name_page_buffer.getvalue())
+                self._fitz_add_data(summary_fitz, pdf_data)
+ 
         summary_buffer = io.BytesIO()
         summary_fitz.save(summary_buffer)
         summary_fitz.close()
@@ -225,6 +346,34 @@ class ExamReader :
         # Store in in_memory_files for ZIP creation
         self.in_memory_files["summary.pdf"] = summary_data
         return summary_data
+
+    def _add_watermark(self, pdf_data: bytes, name: str) -> bytes:
+        doc = fitz.open(stream=pdf_data, filetype="pdf")
+        for page in doc:
+            rect = page.rect
+            
+            # 1. Header watermark (top of page)
+            header_text = f"Schüler/-in: {name}"
+            try:
+                header_len = fitz.get_text_length(header_text, fontname="helv", fontsize=12)
+                header_x = (rect.width - header_len) / 2
+                page.insert_text((header_x, 30), header_text, fontsize=12, color=(1, 0.5, 0.5), fontname="helv", overlay=True)
+            except Exception:
+                page.insert_text((30, 30), header_text, fontsize=12, color=(1, 0.5, 0.5), overlay=True)
+            
+            # 2. Main center watermark
+            #try:
+            #    center_len = fitz.get_text_length(name, fontname="helv", fontsize=48)
+            #    center_x = (rect.width - center_len) / 2
+            #    center_y = rect.height / 2
+            #    page.insert_text((center_x, center_y), name, fontsize=48, color=(0.85, 0.85, 0.85), fontname="helv", overlay=True)
+            #except Exception:
+            #    page.insert_text((rect.width * 0.15, rect.height * 0.5), name, fontsize=48, color=(0.85, 0.85, 0.85), overlay=True)
+                
+        out = io.BytesIO()
+        doc.save(out)
+        doc.close()
+        return out.getvalue()
         
     
     def _build_summary_page (self):
@@ -311,13 +460,19 @@ class ExamReader :
         output_pdf.save(output_buffer)
         output_pdf.close()
         output_buffer.seek(0)
-        pdf_data = output_buffer.getvalue()
+        unwatermarked_pdf_data = output_buffer.getvalue()
+        
+        # Apply watermark to student PDF if option is set
+        if self.student_pdf_watermark:
+            pdf_data = self._add_watermark(unwatermarked_pdf_data, student.split('_')[0])
+        else:
+            pdf_data = unwatermarked_pdf_data
         
         # Store in in_memory_files for ZIP creation
         output_file_path = f"{student_folder}/{student}.pdf"
         self.in_memory_files[output_file_path] = pdf_data
         
-        return [num_pages, pdf_data]
+        return [num_pages, unwatermarked_pdf_data]
             
 
     def _qr_on_back(self, page_size) :
