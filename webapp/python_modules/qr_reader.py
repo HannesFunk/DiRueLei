@@ -166,6 +166,7 @@ class ExamReader :
             
             await self.logMsg_async(f"QR-Code on page {page_number+1} read. Student: {data.split('_')[0]}{f' (angle {angle})' if angle != 0 else ''}", "info")
             data = data.replace("Teilnehmer/in", "")
+            data = data.replace("participant", "")
 
             cx = int(points[0][:,0].mean())
             side = "left" if cx < w/2 else "right"
