@@ -113,6 +113,9 @@ async function initialize() {
     }
 }
 
+// Keep reference to last ExamReader so student files can be extracted after scan
+let lastExamReader = null;
+
 // Handle messages from main thread
 self.onmessage = async function(event) {
     const { type, data } = event.data;
@@ -128,6 +131,10 @@ self.onmessage = async function(event) {
             
         case 'SCAN_START':
             await handleScan(data);
+            break;
+            
+        case 'EXTRACT_STUDENT_FILES':
+            handleExtractStudentFiles();
             break;
             
         case 'SCAN_CANCEL':
@@ -225,12 +232,20 @@ def log_callback(message, level='info'):
             data: file.data
         }));
         
+        // Close previous reader if exists
+        if (lastExamReader) {
+            try { lastExamReader.close(); } catch(e) {}
+            lastExamReader = null;
+        }
+
         const examReader = ExamReader(pdfFilesForPython, {
             two_page_scan: options.twoPageScan || false,
             split_a3: options.splitA3 || false,
             quick_and_dirty: options.quickAndDirty || false,
             qr_position_a4: options.qrPositionA4 || 'vorne',
-            qr_position_a3: options.qrPositionA3 || 'aussen'
+            qr_position_a3: options.qrPositionA3 || 'aussen',
+            summary_mode: options.summaryMode || 'namepage',
+            student_pdf_watermark: options.studentPdfWatermark || false
         });
         
         examReader.progress_callback = progressCallback;
@@ -260,11 +275,13 @@ def log_callback(message, level='info'):
             const end = performance.now();
             postMessage({ type: 'SCAN_LOG', message: `Results downloaded. Completed in ${this.formatTime(end-start)}`, level: 'success' });
             
+            // Keep reader alive for EXTRACT_STUDENT_FILES
+            lastExamReader = examReader;
         } else {
             postMessage({ type: 'ERROR', message: 'PDF scan failed!' });
+            examReader.close();
         }
         
-        examReader.close();
         progressCallback.destroy();
         logCallback.destroy();
         
@@ -273,5 +290,73 @@ def log_callback(message, level='info'):
             type: 'ERROR', 
             message: `Scan error: ${error.message}\n${error.stack}` 
         });
+    }
+}
+
+function handleExtractStudentFiles() {
+    let progressCallback = null;
+    let logCallback = null;
+    try {
+        if (!lastExamReader) {
+            postMessage({ type: 'ERROR', message: 'Keine Scan-Ergebnisse vorhanden. Bitte zuerst PDFs scannen.' });
+            return;
+        }
+
+        pyodide.runPython(`
+import js
+from pyodide.ffi import to_js
+
+def progress_callback(percentage):
+    js.postMessage(to_js({
+        'type': 'SCAN_PROGRESS',
+        'percentage': float(percentage)
+    }, dict_converter=js.Object.fromEntries))
+
+def log_callback(message, level='info'):
+    js.postMessage(to_js({
+        'type': 'SCAN_LOG',
+        'message': str(message),
+        'level': str(level)
+    }, dict_converter=js.Object.fromEntries))
+        `);
+        
+        progressCallback = pyodide.globals.get('progress_callback');
+        logCallback = pyodide.globals.get('log_callback');
+        
+        lastExamReader.progress_callback = progressCallback;
+        lastExamReader.log_callback = logCallback;
+
+        const filesProxy = lastExamReader.get_student_files();
+        const filesList = filesProxy.toJs({ dict_converter: Object.fromEntries });
+        filesProxy.destroy();
+
+        const studentFiles = [];
+        const transferables = [];
+
+        for (const entry of filesList) {
+            const pdfBytes = new Uint8Array(entry.data);
+            const file = {
+                userId: entry.userId,
+                studentName: entry.studentName,
+                filename: entry.filename,
+                data: pdfBytes
+            };
+            studentFiles.push(file);
+            transferables.push(pdfBytes.buffer);
+        }
+
+        postMessage({
+            type: 'STUDENT_FILES',
+            studentFiles: studentFiles
+        }, transferables);
+
+    } catch (error) {
+        postMessage({
+            type: 'ERROR',
+            message: `Fehler beim Extrahieren der Studierenden-Dateien: ${error.message}`
+        });
+    } finally {
+        if (progressCallback) progressCallback.destroy();
+        if (logCallback) logCallback.destroy();
     }
 }

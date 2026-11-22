@@ -678,3 +678,180 @@ body {
 .highlight-box strong {
     color: #e65100;
 }
+
+/* Artemis Import Area */
+.artemis-import-area {
+    background-color: #fafafa;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.artemis-help-text {
+    font-size: 13px;
+    color: #555;
+    margin: 0 0 10px 0;
+    line-height: 1.6;
+}
+
+.artemis-help-link {
+    color: #1976d2;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.artemis-help-link:hover {
+    text-decoration: underline;
+}
+
+.artemis-help-box {
+    background-color: #e8f4fd;
+    border: 1px solid #90caf9;
+    border-radius: 6px;
+    padding: 12px 12px 12px 20px;
+    margin-bottom: 15px;
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.artemis-help-box ol {
+    margin: 0;
+    padding-left: 18px;
+}
+
+.artemis-help-box li {
+    margin: 4px 0;
+}
+
+.artemis-help-box code {
+    background-color: #fff;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-size: 12px;
+}
+
+.artemis-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 500px;
+}
+
+.artemis-form input {
+    padding: 8px 12px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    font-size: 14px;
+}
+
+.artemis-form input:focus {
+    outline: none;
+    border-color: #1976d2;
+    box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.15);
+}
+
+.artemis-form .btn {
+    align-self: flex-start;
+    margin-top: 5px;
+}
+
+.artemis-send-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-top: 5px;
+}
+
+.artemis-send-progress {
+    font-size: 13px;
+    color: #555;
+}
+
+/* Settings Grid Reorganization */
+.settings-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin: 20px 0;
+}
+
+@media (max-width: 768px) {
+    .settings-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.settings-column {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.settings-column-title {
+    font-weight: bold;
+    font-size: 1.1em;
+    margin-bottom: 5px;
+    border-bottom: 2px solid #dee2e6;
+    padding-bottom: 8px;
+    color: #333;
+}
+
+.setting-subgroup {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.subgroup-title {
+    font-weight: bold;
+    color: #555;
+    font-size: 0.95em;
+    margin-bottom: 2px;
+}
+
+.setting-subgroup label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 0.95em;
+    line-height: 1.3;
+}
+
+.setting-subgroup .qr-position-dropdowns {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 5px;
+}
+
+.setting-subgroup .qr-position-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Artemis Toggle Label in Footer */
+.artemis-toggle-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 13px;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+}
+
+.artemis-toggle-label:hover {
+    opacity: 1;
+}
+
+.artemis-toggle-label input {
+    cursor: pointer;
+    margin: 0;
+}

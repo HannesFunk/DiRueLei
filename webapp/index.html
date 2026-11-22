@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="de">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,27 +8,30 @@
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <!-- Cross-Origin Isolation Headers for SharedArrayBuffer support -->
     <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin">
-    <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' blob: 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self' https://cdn.jsdelivr.net/pyodide/ https://pypi.org/ https://files.pythonhosted.org/; worker-src 'self'; child-src blob:; frame-src 'none'; font-src 'self'; base-uri 'self'; form-action 'self';">
+    <meta http-equiv="Cross-Origin-Embedder-Policy" content="credentialless">
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'none'; script-src 'self' blob: 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self' https://cdn.jsdelivr.net/pyodide/ https://pypi.org/ https://files.pythonhosted.org/ https://artemis.tum.de/ https://*.workers.dev/; worker-src 'self'; child-src blob:; frame-src 'none'; font-src 'self'; base-uri 'self'; form-action 'self';">
 
-    <!-- APP_VERSION = "2.2.2" -->
-    <script src="app.js?v=222"></script>
-    <link rel="stylesheet" href="style.css?v=222">
+    <!-- APP_VERSION = "2.3.0" -->
+    <script src="app.js?v=230"></script>
+    <link rel="stylesheet" href="style.css?v=230">
 </head>
+
 <body>
     <div class="container">
         <h1>DiRueLei</h1>
-        
+
         <!-- Main Application -->
         <div id="main-app">
-            
+
             <!-- Main Page -->
             <div id="main-page">
                 <div class="numbered-box">
                     <div class="circle">1</div>
                     <div class="box-content">
                         <div class="box-title">Abgabe im Mebis-Kurs erstellen</div>
-                        <div class="box-description">Bitte mit den Einstellungen aus der Anleitung eine Abgabe im Mebis-Kurs einrichten.</div>
+                        <div class="box-description">Bitte mit den Einstellungen aus der Anleitung eine Abgabe im
+                            Mebis-Kurs einrichten.</div>
                     </div>
                     <a href="anleitung.pdf" target="_blank"><button class="btn">Anleitung</button></a>
                 </div>
@@ -36,7 +40,8 @@
                     <div class="circle">2</div>
                     <div class="box-content">
                         <div class="box-title">QR-Codes erzeugen</div>
-                        <div class="box-description">CSV-Datei gemäß der Anleitung auswählen. QR-Codes werden dann als PDF-Datei erzeugt.</div>
+                        <div class="box-description">CSV-Datei gemäß der Anleitung auswählen. QR-Codes werden dann als
+                            PDF-Datei erzeugt.</div>
                     </div>
                     <button class="btn" id="show-qr-generation-btn">CSV auswählen</button>
                 </div>
@@ -45,7 +50,8 @@
                     <div class="circle">3</div>
                     <div class="box-content">
                         <div class="box-title">LN bekleben und scannen</div>
-                        <div class="box-description">QR-Codes anbringen. Empfehlung für Standardeinstellungen: nur auf Vorderseite (A4) bzw. erster Seite (A3-Bogen).</div>
+                        <div class="box-description">QR-Codes anbringen. Empfehlung für Standardeinstellungen: nur auf
+                            Vorderseite (A4) bzw. erster Seite (A3-Bogen).</div>
                     </div>
                 </div>
 
@@ -62,7 +68,8 @@
                     <div class="circle">5</div>
                     <div class="box-content">
                         <div class="box-title">ZIP-Datei auf Mebis einfügen</div>
-                        <div class="box-description">Die erzeugte Datei auf dem Rechner speichern und auf der Mebis Lernplattform als Feedback hochladen.</div>
+                        <div class="box-description">Die erzeugte Datei auf dem Rechner speichern und auf der Mebis
+                            Lernplattform als Feedback hochladen.</div>
                     </div>
                 </div>
             </div>
@@ -70,13 +77,14 @@
             <!-- QR Generation Page -->
             <div id="qr-generation-page" class="hidden">
                 <h2>QR-Code Generierung</h2>
-                
+
                 <div class="file-upload-area">
                     <div class="file-upload-dropzone" id="csv-dropzone">
                         <input type="file" id="csv-files" accept=".csv" class="file-input-hidden" />
                         <div class="upload-content">
                             <div class="upload-icon">
-                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                                     <polyline points="7,10 12,15 17,10"></polyline>
                                     <line x1="12" y1="15" x2="12" y2="3"></line>
@@ -89,6 +97,38 @@
                             <div class="file-info">
                                 <span class="file-type">CSV-Dateien</span>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="artemis-feature hidden">
+                    <div style="text-align: center; margin: 20px 0; font-weight: bold; color: #666;">
+                        &mdash; ODER &mdash;
+                    </div>
+
+                    <div class="artemis-import-area">
+                        <h3 style="margin-top: 0;">Daten aus Artemis abrufen</h3>
+                        <p class="artemis-help-text">
+                            Zum Abrufen der Studierendendaten benötigen Sie Ihren JWT-Token aus Artemis.<br>
+                            <a href="#" id="artemis-help-toggle" class="artemis-help-link">Wie erhalte ich den
+                                JWT-Token?</a>
+                        </p>
+                        <div id="artemis-help-box" class="artemis-help-box hidden">
+                            <ol>
+                                <li>Melden Sie sich bei <a href="https://artemis.tum.de" target="_blank"
+                                        rel="noopener">artemis.tum.de</a> an.</li>
+                                <li>Öffnen Sie die Entwicklerkonsole (F12) → Reiter <strong>Application</strong> (Chrome)
+                                    bzw. <strong>Storage</strong> (Firefox).</li>
+                                <li>Unter <strong>Cookies → https://artemis.tum.de</strong> finden Sie den Cookie
+                                    <code>jwt</code>.
+                                </li>
+                                <li>Kopieren Sie den <strong>Wert</strong> (langer Text) und fügen Sie ihn unten ein.</li>
+                            </ol>
+                        </div>
+                        <div class="artemis-form">
+                            <input type="password" id="artemis-jwt" placeholder="JWT-Token einfügen" autocomplete="off">
+                            <input type="text" id="artemis-courseid" placeholder="Course ID (z.B. 233)" autocomplete="off">
+                            <button class="btn" id="fetch-artemis-btn">Daten abrufen</button>
                         </div>
                     </div>
                 </div>
@@ -106,7 +146,7 @@
 
                     <div class="setting-group">
                         <label>
-                            <input type="checkbox" id="checkbox-use-offset"> 
+                            <input type="checkbox" id="checkbox-use-offset">
                             Ersten QR-Code an bestimmter Position setzen
                         </label>
                         <div id="offset-settings" class="hidden">
@@ -117,7 +157,7 @@
 
                     <div class="setting-group">
                         <label>
-                            <input type="checkbox" id="checkbox-select-students"> 
+                            <input type="checkbox" id="checkbox-select-students">
                             Nur für bestimmte Schüler/-innen QR-Codes erstellen
                         </label>
                         <div id="student-selection" class="student-list hidden">
@@ -136,13 +176,14 @@
             <!-- PDF Scan Page -->
             <div id="pdf-scan-page" class="hidden">
                 <h2>PDF Scan Einstellungen</h2>
-                
+
                 <div class="file-upload-area">
                     <div class="file-upload-dropzone" id="pdf-dropzone">
                         <input type="file" id="pdf-files" accept=".pdf" multiple class="file-input-hidden" />
                         <div class="upload-content">
                             <div class="upload-icon">
-                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                                     <polyline points="7,10 12,15 17,10"></polyline>
                                     <line x1="12" y1="15" x2="12" y2="3"></line>
@@ -165,41 +206,73 @@
                 </button>
 
                 <div id="scan-settings" class="scan-options hidden">
-                    <div class="checkbox-group">
-                        <label>
-                            <input type="checkbox" id="two-page-scan" checked> 
-                            Doppelseitiger Scan mit nur einem QR-Code pro Blatt/ Bogen
-                        </label>
-                        <div id="qr-position-settings" class="qr-position-dropdowns">
-                            <div class="qr-position-item">
-                                <label for="qr-position-a4">QR-Code Position (A4):</label>
-                                <select id="qr-position-a4">
-                                    <option value="vorne" selected>Vorderseite</option>
-                                    <option value="hinten">Rückseite</option>
-                                </select>
+                    <div class="settings-grid">
+                        <!-- Left Column: Scan & Recognition -->
+                        <div class="settings-column">
+                            <div class="settings-column-title">1. Scan & QR-Code Erkennung</div>
+                            
+                            <div class="setting-subgroup">
+                                <label>
+                                    <input type="checkbox" id="two-page-scan" checked>
+                                    Doppelseitiger Scan mit nur einem QR-Code pro Blatt/ Bogen
+                                </label>
+                                <div id="qr-position-settings" class="qr-position-dropdowns" style="margin-left: 20px;">
+                                    <div class="qr-position-item">
+                                        <label for="qr-position-a4">QR-Code Position (A4):</label>
+                                        <select id="qr-position-a4">
+                                            <option value="vorne" selected>Vorderseite</option>
+                                            <option value="hinten">Rückseite</option>
+                                        </select>
+                                    </div>
+                                    <div class="qr-position-item">
+                                        <label for="qr-position-a3">QR-Code Position (A3):</label>
+                                        <select id="qr-position-a3">
+                                            <option value="innen">Innenseiten (Seite 2 oder 3)</option>
+                                            <option value="aussen" selected>Außenseite (Seite 1 oder 4)</option>
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="qr-position-item">
-                                <label for="qr-position-a3">QR-Code Position (A3):</label>
-                                <select id="qr-position-a3">
-                                    <option value="innen">Innenseiten (Seite 2 oder 3)</option>
-                                    <option value="aussen" selected>Außenseite (Seite 1 oder 4)</option>
-                                </select>
+
+                            <div class="setting-subgroup">
+                                <label>
+                                    <input type="checkbox" id="split-a3">
+                                    A3-Bögen in einzelne A4-Seiten teilen
+                                </label>
+                            </div>
+
+                            <div class="setting-subgroup">
+                                <label>
+                                    <input type="checkbox" id="quick-and-dirty" checked>
+                                    Quick and dirty: beschleunigte Suche (empfohlen)
+                                </label>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="checkbox-group">
-                        <label>
-                            <input type="checkbox" id="split-a3"> 
-                            A3-Bögen in einzelne A4-Seiten teilen
-                        </label>
-                    </div>
+                        <!-- Right Column: Output & Layout Formatting -->
+                        <div class="settings-column">
+                            <div class="settings-column-title">2. Ausgabe- & Download-Format</div>
 
-                    <div class="checkbox-group">
-                        <label>
-                            <input type="checkbox" id="quick-and-dirty" checked> 
-                            Quick and dirty: beschleunigte Suche bei mehrseitigen Scans (empfohlen)
-                        </label>
+                            <div class="setting-subgroup">
+                                <div class="subgroup-title">Druckformat der Zusammenfassung:</div>
+                                <label>
+                                    <input type="radio" name="summary-mode" id="summary-mode-namepage" value="namepage" checked>
+                                    Separates Deckblatt mit Schülername vor jeder Arbeit
+                                </label>
+                                <label>
+                                    <input type="radio" name="summary-mode" id="summary-mode-watermark" value="watermark">
+                                    Schülername als Wasserzeichen (papierfreundlich)
+                                </label>
+                            </div>
+
+                            <div class="setting-subgroup">
+                                <div class="subgroup-title">Format der einzelnen Schüler-PDFs:</div>
+                                <label>
+                                    <input type="checkbox" id="student-pdf-watermark">
+                                    Schülername als Wasserzeichen in jedes Schüler-PDF einfügen
+                                </label>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -209,9 +282,40 @@
 
                 <div class="output-area hidden" id="scan-output"></div>
 
+                <div id="artemis-send-section" class="artemis-import-area artemis-feature hidden" style="margin-top: 20px;">
+                    <h3 style="margin-top: 0;">Ergebnisse über Artemis versenden</h3>
+                    <p class="artemis-help-text">
+                        Senden Sie die gescannten PDFs direkt an die Studierenden über Artemis-Nachrichten.<br>
+                        <a href="#" id="artemis-send-help-toggle" class="artemis-help-link">Wie erhalte ich den
+                            JWT-Token?</a>
+                    </p>
+                    <div id="artemis-send-help-box" class="artemis-help-box hidden">
+                        <ol>
+                            <li>Melden Sie sich bei <a href="https://artemis.tum.de" target="_blank"
+                                    rel="noopener">artemis.tum.de</a> an.</li>
+                            <li>Öffnen Sie die Entwicklerkonsole (F12) → Reiter <strong>Application</strong> (Chrome)
+                                bzw. <strong>Storage</strong> (Firefox).</li>
+                            <li>Unter <strong>Cookies → https://artemis.tum.de</strong> finden Sie den Cookie
+                                <code>jwt</code>.
+                            </li>
+                            <li>Kopieren Sie den <strong>Wert</strong> (langer Text) und fügen Sie ihn unten ein.</li>
+                        </ol>
+                    </div>
+                    <div class="artemis-form">
+                        <input type="password" id="artemis-send-jwt" placeholder="JWT-Token einfügen"
+                            autocomplete="off">
+                        <input type="text" id="artemis-send-courseid" placeholder="Course ID (z.B. 233)"
+                            autocomplete="off">
+                        <div class="artemis-send-actions">
+                            <button class="btn" id="send-artemis-btn">An Studierende senden</button>
+                            <span id="artemis-send-progress" class="artemis-send-progress"></span>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="button-group">
                     <button class="btn btn-secondary" id="back-from-scan-btn">Zurück zur Hauptseite</button>
-                    <button class="btn btn-secondary" id="download-results-btn">Zusammenfassung  öffnen</button>
+                    <button class="btn btn-secondary" id="download-results-btn">Zusammenfassung öffnen</button>
                     <button class="btn" id="process-pdf-btn">PDFs einlesen</button>
                 </div>
             </div>
@@ -221,14 +325,19 @@
     <footer class="footer">
         <div class="footer-content">
             DiRueLei
-            <span class="version">v2.2.2</span>
-            <span class="upload-time">vom 07.04.2026, 00:46</span>
+            <span class="version">v2.3.0</span>
+            <span class="upload-time">vom 10.07.2026, 12:49</span>
             <span class="footer-separator">•</span>
-            <span class="author">(c) Hannes Funk, 2026</span>
+            <span class="author">(c) Hannes Funk, Valentin Herrmann; 2026</span>
             <span class="footer-separator">•</span>
             <a href="datenschutz.html" target="_blank" class="footer-link">Datenschutzhinweise</a>
+            <span class="footer-separator">•</span>
+            <label class="artemis-toggle-label">
+                <input type="checkbox" id="artemis-toggle"> Artemis-Modus
+            </label>
         </div>
     </footer>
 
 </body>
+
 </html>

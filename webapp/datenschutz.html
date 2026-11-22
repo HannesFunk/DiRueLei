@@ -15,15 +15,15 @@
             <h2>Datenschutz bei DiRueLei</h2>
             
             <div class="datenschutz-section">
-                <h3>🔒 Vollständige Offline-Verarbeitung</h3>
+                <h3>🔒 Lokale Verarbeitung & Optionale Artemis-Integration</h3>
                 <p>
-                    DiRueLei ist eine Web-Anwendung, die <strong>vollständig im Browser</strong> ausgeführt wird. 
-                    Alle Daten werden <strong>ausschließlich lokal auf Ihrem Gerät</strong> verarbeitet.
+                    DiRueLei ist eine Web-Anwendung, die standardmäßig <strong>im Browser</strong> ausgeführt wird. 
+                    Im reinen Offline-Modus werden alle Daten <strong>ausschließlich lokal auf Ihrem Gerät</strong> verarbeitet.
                 </p>
                 <ul>
-                    <li><strong>Keine Server-Uploads:</strong> Weder CSV-Dateien noch PDF-Dokumente werden auf einen Server hochgeladen.</li>
-                    <li><strong>Keine Cloud-Speicherung:</strong> Alle Verarbeitungsschritte finden lokal im Browser statt.</li>
-                    <li><strong>Keine externe Datenübertragung:</strong> Es werden keine personenbezogenen Daten an Dritte weitergegeben.</li>
+                    <li><strong>Standardmäßig keine Server-Uploads:</strong> Bei lokaler Nutzung werden weder CSV-Dateien noch PDF-Dokumente auf einen Server hochgeladen.</li>
+                    <li><strong>Optionale Artemis-Integration:</strong> Wenn Sie den JWT-basierten Import/Upload-Flow für Artemis nutzen, werden ausgehende Verbindungen zu Artemis sowie einem Drittanbieter-CORS-Proxy aufgebaut. Hierbei werden erforderliche Daten (wie Tokens, Kurs-IDs und Rückgaben) übertragen.</li>
+                    <li><strong>Keine Cloud-Speicherung:</strong> Die generellen Verarbeitungsschritte finden weiterhin lokal im Browser statt.</li>
                     <li><strong>Keine Tracking-Cookies:</strong> DiRueLei verwendet keine Tracking- oder Analyse-Tools.</li>
                 </ul>
             </div>
@@ -42,14 +42,15 @@
 
             <div class="datenschutz-section">
                 <h3>📋 Welche Daten werden verarbeitet?</h3>
-                <p>DiRueLei verarbeitet folgende Daten lokal in Ihrem Browser:</p>
+                <p>DiRueLei verarbeitet folgende Daten primär lokal in Ihrem Browser:</p>
                 <ul>
                     <li><strong>CSV-Dateien:</strong> Schüler-IDs und Namen aus Mebis-Exporten.</li>
                     <li><strong>PDF-Dateien:</strong> Gescannte Dokumente mit QR-Codes.</li>
                     <li><strong>QR-Codes:</strong> Automatisch generierte Identifikationscodes.</li>
+                    <li><strong>Artemis-Daten (Optional):</strong> Bei Nutzung der Artemis-Integration werden JWT-Tokens, Kurs-IDs sowie Rückgabedokumente verarbeitet und an Artemis (ggf. über einen Drittanbieter-CORS-Proxy) gesendet.</li>
                 </ul>
                 <p>
-                    Alle diese Daten bleiben <strong>ausschließlich auf Ihrem Gerät</strong> und werden nicht übertragen.
+                    Ohne Nutzung der Artemis-Funktionen bleiben alle Daten <strong>ausschließlich auf Ihrem Gerät</strong> und werden nicht übertragen.
                 </p>
             </div>
 
@@ -71,7 +72,7 @@
                     <li>Moderne Browser-Sicherheitsmechanismen (Cross-Origin Isolation).</li>
                     <li>Keine Persistierung von Daten über die Sitzung hinaus.</li>
                     <li>Verwendung von WebAssembly (Pyodide) für sichere Python-Ausführung im Browser.</li>
-                    <li>Keine Netzwerkverbindungen während der Datenverarbeitung (außer initialem Laden der Anwendung).</li>
+                    <li>Keine Netzwerkverbindungen während der Datenverarbeitung (außer initialem Laden der Anwendung und optionalen Anfragen an Artemis bzw. einen CORS-Proxy).</li>
                 </ul>
             </div>
 
