@@ -47,7 +47,7 @@ async function initialize() {
         
         const packages = [
             'Pillow',
-            'reportlab', 
+            'reportlab==5.1.0', // 5.1.1+ needs pillow>=13; Pyodide 0.28.3 ships pillow 11.3
             'PyPDF2',
             'PyMuPDF',
             'opencv-python',
