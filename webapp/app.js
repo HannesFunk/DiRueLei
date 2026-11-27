@@ -51,7 +51,7 @@ class DiRueLeiApp {
         }
 
         console.log('Initializing scan worker...');
-        this.scanWorker = new Worker('scan-worker.js?v=230');
+        this.scanWorker = new Worker('scan-worker.js?v=231');
 
         this.scanWorker.onmessage = (event) => {
             this.handleWorkerMessage(event.data);
@@ -778,7 +778,7 @@ class DiRueLeiApp {
         for (let i = 1; i < lines.length; i++) {
             const values = lines[i].split(',').map(v => v.trim());
             students.push({
-                id: values[0] || '',
+                id: String(values[0] || '').replace(/Teilnehmer\/in|Participant|["\s]/g, ''),
                 name: String(values[1]).replaceAll('"', '') || ''
             });
         }
