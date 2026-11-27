@@ -1,4 +1,5 @@
 import io
+import re
 import zipfile
 import time
 from datetime import datetime
@@ -16,6 +17,16 @@ from reportlab.lib import colors
 from reportlab.pdfgen import canvas
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
+
+
+def normalize_qr_data(data):
+    # QR codes from before the ID cleanup in parseCSV (app.js) contain the raw
+    # Moodle ID, e.g. "Name_Teilnehmer/in6028356" or 'Name_"Participant 6028356"'.
+    if "_" not in data:
+        return data
+    name, _, sid = data.rpartition("_")
+    sid = re.sub(r'teilnehmer/in|participant|["\s]', '', sid, flags=re.IGNORECASE)
+    return f"{name}_{sid}"
 
 class ExamReader : 
     def __init__(self, pdf_files_data, scan_options):
@@ -283,7 +294,7 @@ class ExamReader :
                 continue
             
             await self.logMsg_async(f"QR-Code on page {page_number+1} read. Student: {data.split('_')[0]}{f' (angle {angle})' if angle != 0 else ''}", "info")
-            data = data.replace("Teilnehmer/in", "")
+            data = normalize_qr_data(data)
 
             cx = int(points[0][:,0].mean())
             side = "left" if cx < w/2 else "right"
