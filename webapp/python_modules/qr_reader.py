@@ -28,6 +28,15 @@ def normalize_qr_data(data):
     sid = re.sub(r'teilnehmer/in|participant|["\s]', '', sid, flags=re.IGNORECASE)
     return f"{name}_{sid}"
 
+
+def is_dirueLei_qr(data):
+    # DiRueLei QR codes have the format "Name_ID" (see qr_generator.py).
+    # Other QR codes on the page (e.g. Examence page codes "EXM1:...") are ignored.
+    if not data or "_" not in data:
+        return False
+    name, _, sid = normalize_qr_data(data).rpartition("_")
+    return name.strip() != "" and sid.strip() != ""
+
 class ExamReader : 
     def __init__(self, pdf_files_data, scan_options):
             
@@ -285,22 +294,45 @@ class ExamReader :
             angles = [0]
         else:
             angles = [0] + [i for i in range(-15, 16) if i != 0]
+        ignored = set()
         for angle in angles :
             matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
             rotated = cv2.warpAffine(img_cv, matrix, (w,h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
 
-            data, points, _ = detector.detectAndDecode(rotated)
-            if data == "" :
-                continue
-            
-            await self.logMsg_async(f"QR-Code on page {page_number+1} read. Student: {data.split('_')[0]}{f' (angle {angle})' if angle != 0 else ''}", "info")
-            data = normalize_qr_data(data)
+            for data, pts in self._decode_all_qr(detector, rotated) :
+                if not is_dirueLei_qr(data) :
+                    if data not in ignored :
+                        ignored.add(data)
+                        await self.logMsg_async(f"Fremder QR-Code auf Seite {page_number+1} ignoriert: {data}", "info")
+                    continue
 
-            cx = int(points[0][:,0].mean())
-            side = "left" if cx < w/2 else "right"
-            return (data, side)
-            
+                await self.logMsg_async(f"QR-Code on page {page_number+1} read. Student: {data.split('_')[0]}{f' (angle {angle})' if angle != 0 else ''}", "info")
+                data = normalize_qr_data(data)
+
+                cx = int(np.asarray(pts).reshape(-1, 2)[:,0].mean())
+                side = "left" if cx < w/2 else "right"
+                return (data, side)
+
         return (None, None)
+
+    def _decode_all_qr(self, detector, img) :
+        # Returns [(data, points)] for all decodable QR codes on the image.
+        # Pages may carry several QR codes (e.g. Examence page codes next to ours).
+        results = []
+        try:
+            ok, decoded, points, _ = detector.detectAndDecodeMulti(img)
+            if ok and points is not None :
+                for data, pts in zip(decoded, points) :
+                    if data :
+                        results.append((data, pts))
+        except Exception:
+            pass
+
+        if not any(is_dirueLei_qr(d) for d, _ in results) :
+            data, points, _ = detector.detectAndDecode(img)
+            if data and points is not None and data not in [d for d, _ in results] :
+                results.append((data, points))
+        return results
 
     def _open_page_cv (self, page_number) :
         zoom = 3
@@ -463,7 +495,7 @@ class ExamReader :
 
         num_pages = len(output_pdf)
         # Format: Participant_6028356_assignsubmission_file_
-        student_id = student.split("_")[1]
+        student_id = student.rpartition("_")[2] or re.sub(r'[^\w-]', '_', student)
         student_folder = "Participant_" + student_id + "_assignsubmission_file_"
         
         # Save to memory buffer instead of file
